@@ -72,6 +72,13 @@ public:
    *
    * @param coord matrix of coordinates of the new desing locations
    */
+  Go::SplineCurve
+  Predict ( RVectorXd& coord ) const;            
+            
+  /*! Predict the spline curve at the design coordinates coord
+   *
+   * @param coord matrix of coordinates of the new desing locations
+   */
   vector<Go::SplineCurve>
   Predict ( MatrixXd& coord ) const;
 

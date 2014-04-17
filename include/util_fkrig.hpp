@@ -55,6 +55,29 @@ adaptiveSimpsons ( double ( *f ) ( Go::SplineCurve, double, double ),
                    double epsilon,
                    int maxRecursionDepth );
 
+//! Recursive auxiliary function for adaptiveSimpsons() function below
+double
+adaptiveSimpsonsAux ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, double, vector<MatrixXd> ),
+                      vector< shared_ptr< Go::SplineCurve > > curve,
+                      vector<MatrixXd> llt_sigma_folded,
+                      double a,
+                      double b,
+                      double epsilon,
+                      double S,
+                      double fa,
+                      double fb,
+                      double fc,
+                      int bottom );
+
+//! Adaptive Simpson's Rule
+double
+adaptiveSimpsons ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, double, vector<MatrixXd> ),
+                   vector< shared_ptr< Go::SplineCurve > > curve,
+                   vector<MatrixXd> llt_sigma_folded,
+                   double a, double b,
+                   double epsilon,
+                   int maxRecursionDepth );
+
 //! Compute the squre of the curve in the parametric point param
 double
 square_curve_point ( Go::SplineCurve curve,
@@ -65,11 +88,17 @@ double
 abs_curve_point ( Go::SplineCurve curve,
                   double param );
 
-//! Compute the expected value absolute value of the curve in the parametric point param
+//! Compute the expected value of the absolute value of the curve in the parametric point param
 double
 e_abs_curve_point ( Go::SplineCurve curve,
                     double param,
                     double sd );
+
+//! Compute the expected value for the expected improvment
+double
+MeanEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
+              double param,
+              vector<MatrixXd> llt_sigma_folded );
 
 //! Compute the square of the surface in the parametric point param
 int

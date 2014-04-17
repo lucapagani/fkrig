@@ -17,6 +17,9 @@ fkrig::EgoCurve::EgoCurve ( std::shared_ptr<fkrig::CurveBase>& f_curve,
 {
   // Compute range
   ComputeUniqueRange ();
+
+  // Compute min
+  ComputeMin ();
 };
 
 //! Compute the L1 distance to the nominal funciton
@@ -64,6 +67,97 @@ fkrig::EgoCurve::ComputeL1Mean ( Go::SplineCurve& curve,
   return value;
 }
 
+//! Compute the value of the mean at the design coordinates coord
+double
+fkrig::EgoCurve::ComputeMean ( RVectorXd coord ) const
+{
+
+  double value = 0.;
+
+  // Check if coord is equal to the minimum
+  vector<bool> comp ( coord.cols(), false );
+  for ( size_t i = 0; i < coord.cols(); ++i )
+    comp[i] = EgoBase::coord_ego_ ( 0, i ) == coord ( i );
+
+  if ( std::any_of ( comp.begin(), comp.end(), [] ( int i ) {
+  return ( i == false );
+  } ) ) {
+
+    // Predict in the coordinate coord
+    Go::SplineCurve curve = f_curve_->Predict ( coord );
+
+    MatrixXd coord_ego ( EgoBase::coord_ego_.rows(), EgoBase::coord_ego_.cols() );
+
+    coord_ego.row ( 0 ) = EgoBase::coord_ego_.row ( 0 );
+    coord_ego.row ( 1 ) = coord.row ( 0 );
+
+//   for ( size_t i = 0; i < coord.cols(); ++i )
+//     EgoBase::coord_ego_(1,i) = coord(i);
+
+    // Create vector of shared pointer to curves
+    vector< shared_ptr<Go::SplineCurve> > curves_ptr;
+    curves_ptr.resize ( 2 );
+    ( curves_ptr[0] ).reset ( new Go::SplineCurve );
+    ( curves_ptr[1] ).reset ( new Go::SplineCurve );
+    curves_ptr[0] = Go::GeometryTools::curveSum ( curve_min_, 1, *nominal_curve_, -1 );
+    curves_ptr[1] = Go::GeometryTools::curveSum ( curve, 1, *nominal_curve_, -1 );
+
+    // Compute the covariance matrix between the points of coord (s1 = s2 = 1)
+    MatrixXd sigma_folded ( 2, 2 );
+    sigma_folded = f_curve_->PredictCovariance ( coord_ego );
+
+    // Obtain range
+    std::pair<double, double> range = f_curve_->get_range();
+
+    // Compute the covariance for each s
+    sigma_folded /= ( range.second - range.first );
+
+    if ( sigma_folded ( 0,0 ) < 1e-12 && sigma_folded ( 1,1 ) < 1e-12 ) {
+
+      value = fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, * ( curves_ptr[0] ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value -= fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, * ( curves_ptr[1] ), range_points_.first, range_points_.second, 1e-6, 10 );
+
+    } else {
+
+      Eigen::LLT<MatrixXd> llt;
+      vector<MatrixXd> llt_sigma_folded;
+      llt_sigma_folded.resize ( 2 );
+      llt_sigma_folded[0].resize ( coord.rows(), coord.rows() );
+      llt_sigma_folded[1].resize ( coord.rows(), coord.rows() );
+
+      llt.compute ( sigma_folded );
+      llt_sigma_folded[0] = llt.matrixL();
+
+      // Compute the covariance matrix with s1 = 1, s2 = -1
+      sigma_folded ( 0,1 ) = - sigma_folded ( 0,1 );
+      sigma_folded ( 1,0 ) = - sigma_folded ( 1,0 );
+
+      llt.compute ( sigma_folded );
+      llt_sigma_folded[1] = llt.matrixL();
+
+      value = fkrig::adaptiveSimpsons ( &fkrig::MeanEiCurve, curves_ptr, llt_sigma_folded, range_points_.first, range_points_.second, 1e-6, 10 );
+
+    }
+
+  }
+
+  return value;
+}
+
+//! Compute the value of the variance at the design coordinates coord
+double
+fkrig::EgoCurve::ComputeVariance ( MatrixXd coord ) const
+{
+  return 0.;
+}
+
+//! Compute the expected improvment in location coord
+double
+fkrig::EgoCurve::ComputeFunction ( RVectorXd coord )
+{
+  return 0.;
+}
+
 //! Compute the L1 distance to the nominal funciton
 void
 fkrig::EgoCurve::ComputeMin ()
@@ -86,31 +180,6 @@ fkrig::EgoCurve::ComputeMin ()
   EgoBase::coord_ego_.row ( 0 ) = coord.row ( EgoBase::index_min_ );
   // Save the predicted curve with miminum expected L1 distance
   curve_min_ = curves[EgoBase::index_min_];
-}
-
-//! Compute the value of the mean at the design coordinates coord
-double
-fkrig::EgoCurve::ComputeMean ( MatrixXd coord ) const
-{
-
-  // Predict in the coordinate coord
-  Go::SplineCurve curve = f_curve_->Predict ( coord );
-
-  return 0.;
-}
-
-//! Compute the value of the variance at the design coordinates coord
-double
-fkrig::EgoCurve::ComputeVariance ( MatrixXd coord ) const
-{
-  return 0.;
-}
-
-//! Compute the expected improvment in location coord
-double
-fkrig::EgoCurve::ComputeFunction ( RVectorXd coord )
-{
-  return 0.;
 }
 
 //! Compute the range of the knots vector for the curves

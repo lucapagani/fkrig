@@ -84,6 +84,48 @@ adaptiveSimpsons ( double ( *f ) ( Go::SplineCurve, double, double ), // ptr to 
   return adaptiveSimpsonsAux ( f, curve, sd, a, b, epsilon, S, fa, fb, fc, maxRecursionDepth );
 }
 
+//! Recursive auxiliary function for adaptiveSimpsons() function below
+double
+adaptiveSimpsonsAux ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, double, vector<MatrixXd> ),
+                      vector< shared_ptr< Go::SplineCurve > > curve,
+                      vector<MatrixXd> llt_sigma_folded,
+                      double a,
+                      double b,
+                      double epsilon,
+                      double S,
+                      double fa,
+                      double fb,
+                      double fc,
+                      int bottom )
+{
+  double c = ( a + b ) /2, h = b - a;
+  double d = ( a + c ) /2, e = ( c + b ) /2;
+  double fd = f ( curve, d, llt_sigma_folded ), fe = f ( curve, e, llt_sigma_folded );
+  double Sleft = ( h/12 ) * ( fa + 4*fd + fc );
+  double Sright = ( h/12 ) * ( fc + 4*fe + fb );
+  double S2 = Sleft + Sright;
+  if ( bottom <= 0 || fabs ( S2 - S ) <= 15*epsilon )
+    return S2 + ( S2 - S ) /15;
+  return adaptiveSimpsonsAux ( f, curve, llt_sigma_folded, a, c, epsilon/2, Sleft,  fa, fc, fd, bottom-1 ) +
+         adaptiveSimpsonsAux ( f, curve, llt_sigma_folded, c, b, epsilon/2, Sright, fc, fb, fe, bottom-1 );
+
+}
+
+//! Adaptive Simpson's Rule
+double
+adaptiveSimpsons ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, double, vector<MatrixXd> ), // ptr to function
+                   vector< shared_ptr< Go::SplineCurve > > curve, // curve
+                   vector<MatrixXd> llt_sigma_folded, // standard deviation
+                   double a, double b,  // interval [a,b]
+                   double epsilon,  // error tolerance
+                   int maxRecursionDepth )  // recursion cap
+{
+  double c = ( a + b ) /2, h = b - a;
+  double fa = f ( curve, a, llt_sigma_folded ), fb = f ( curve, b, llt_sigma_folded ), fc = f ( curve, c, llt_sigma_folded );
+  double S = ( h/6 ) * ( fa + 4*fc + fb );
+  return adaptiveSimpsonsAux ( f, curve, llt_sigma_folded, a, b, epsilon, S, fa, fb, fc, maxRecursionDepth );
+}
+
 //! Compute the squre of the curve in the parametric point param
 double
 square_curve_point ( Go::SplineCurve curve,
@@ -124,12 +166,71 @@ e_abs_curve_point ( Go::SplineCurve curve,
   curve.point ( point, param );
   double mean = point[0];
   double ratio = mean / sd;
-  
+
   normal z;
-  
+
   double value = sd * std::sqrt ( 2 ) / boost::math::constants::root_pi<double>() * std::exp ( - std::pow ( ratio, 2 ) / 2 ) + mean * ( 1 - 2 * cdf ( z, - ratio ) );
-  
+
   return value;
+}
+
+//! Compute the expected value for the expected improvment
+double
+MeanEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
+              double param,
+              vector<MatrixXd> llt_sigma_folded )
+{
+  // Compute the inverse of llt_sigma_folded
+  MatrixXd inv_llt_sigma_folded_0 = llt_sigma_folded[0].inverse();
+  MatrixXd inv_llt_sigma_folded_1 = llt_sigma_folded[1].inverse();
+
+  // Compute the mean on the param value
+  Go::Point point_0, point_1;
+  curve_ptr[0]->point ( point_0, param );
+  curve_ptr[1]->point ( point_1, param );
+
+  // Store values in a vector
+  Eigen::Vector2d mu ( 2 );
+  mu << point_0[0], point_1[0];
+
+  normal z;
+
+  // Compute values of inv_llt_sigma_folded * mu
+  // s1 = s2 = 1
+  Eigen::Vector2d prod_0 = inv_llt_sigma_folded_0 * mu;
+  // s1 = 1, s2 = -1
+  mu ( 1 ) = - mu ( 1 );
+  Eigen::Vector2d prod_1 = inv_llt_sigma_folded_1 * mu;
+  // s1 = s2 = -1
+  mu ( 0 ) = - mu ( 0 );
+  Eigen::Vector2d prod_3 = inv_llt_sigma_folded_0 * mu;
+  // s1 = -1, s2 = 1
+  mu ( 1 ) = - mu ( 1 );
+  Eigen::Vector2d prod_2 = inv_llt_sigma_folded_1 * mu;
+
+  // Compute mean of the first entry of the vector mu
+  // s1 = s2 = 1
+  double mu_0_0 = point_0[0] * cdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 0,0 ) * pdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) );
+  // s1 = 1, s2 = -1
+  double mu_0_1 = point_0[0] * cdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 0,0 ) * pdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) );
+  // s1 = -1, s2 = 1
+  double mu_0_2 = - point_0[0] * cdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 0,0 ) * pdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) );
+  // s1 = -1, s2 = -1
+  double mu_0_3 = - point_0[0] * cdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 0,0 ) * pdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) );
+
+  // s1 = s2 = 1
+  double mu_1_0 = point_1[0] * cdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 1,0 ) * pdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 1,1 ) * pdf ( z, prod_0 ( 1 ) ) * cdf ( z, prod_0 ( 0 ) );
+  // s1 = 1, s2 = -1
+  double mu_1_1 = point_1[0] * cdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_1 ( 1 ) ) * cdf ( z, prod_1 ( 0 ) );
+  // s1 = -1, s2 = 1
+  double mu_1_2 = - point_1[0] * cdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_2 ( 1 ) ) * cdf ( z, prod_2 ( 0 ) );
+  // s1 = -1, s2 = -1
+  double mu_1_3 = - point_1[0] * cdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 1,0 ) * pdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 1,1 ) * pdf ( z, prod_3 ( 1 ) ) * cdf ( z, prod_3 ( 0 ) );
+
+  // Compute mu_0 - mu_1
+  double mu_delta = mu_0_0 + mu_0_1 + mu_0_2 + mu_0_3 - ( mu_1_0 + mu_1_1 + mu_1_2 + mu_1_3 );
+
+  return mu_delta;
 }
 
 //! Compute the squre of the surface in the parametric point param

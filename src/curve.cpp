@@ -215,6 +215,66 @@ fkrig::Curve::Predict ( MatrixXd& coord,
 }
 
 // Predict the spline curve at the design coordinates coord
+Go::SplineCurve
+fkrig::Curve::Predict ( RVectorXd& coord ) const
+{
+
+  // Check matrix coord
+  if ( CurveBase::coord_.cols() != coord.cols() ) {
+    std::cerr << "Matrix of coordinates must have the same number of columns" << std::endl;
+  }
+
+  // Compute the matrix of pariwise distance between coord and coord_
+  VectorXd u ( CurveBase::coord_.rows() );
+  Eigen::Matrix<double, 1, Eigen::Dynamic> temp ( CurveBase::coord_.cols() );
+
+  for ( size_t i = 0; i < CurveBase::coord_.rows(); ++i ) {
+    temp = coord.row ( 0 ) - CurveBase::coord_.row ( i );
+    u ( i ) = std::sqrt ( temp * temp.adjoint() );
+  }
+
+  // Compute the covariance matrix between coord and coord_
+  MatrixXd cov = CurveBase::cov_->ComputeCov ( u, 1, CurveBase::coord_.rows() );
+
+  // Compute the coefficients of the curves of the term S0 inv(S) (z - F a)
+  MatrixXd dx_coefs = cov * dx_coefs_;
+
+  // Compute the coefficients of the curves of the term F_0 a
+  MatrixXd F_0 = CurveBase::MakeModelMatrix ( coord ) ;
+
+  // Obtain the vector of the coefficients of the curves and store them in a matrix
+  MatrixXd curve_coefs ( CurveBase::curve_ptr_.size(), CurveBase::curve_ptr_[0]->numCoefs() );
+
+  // Fill the matrix
+  std::vector< double >::const_iterator i_coefs_begin, i_coefs_end;
+  for ( size_t i = 0; i < CurveBase::curve_ptr_.size(); ++i ) {
+    i_coefs_begin = CurveBase::curve_ptr_[i]->coefs_begin () + CurveBase::dim_ - 1;
+    i_coefs_end = CurveBase::curve_ptr_[i]->coefs_end ();
+    for ( size_t j = 0 ; i_coefs_begin < i_coefs_end; i_coefs_begin += CurveBase::dim_, ++j )
+      curve_coefs ( i, j ) = *i_coefs_begin;
+  }
+
+  MatrixXd sx_coefs = F_0 * a_coefs_ * curve_coefs;
+
+  // Compute the coefficients of the predicted curve
+  vector<double> coefs;
+
+  coefs.resize ( sx_coefs.cols() );
+  for ( size_t i = 0; i < sx_coefs.cols(); ++i )
+    coefs[i] = sx_coefs ( i ) + dx_coefs ( i );
+
+  // Compute the predicted curves
+  Go::SplineCurve pred;
+
+  size_t n_coefs = CurveBase::curve_ptr_[0]->numCoefs (), order = CurveBase::curve_ptr_[0]->order ();
+  vector<double>::const_iterator it_begin = CurveBase::curve_ptr_[0]->knotsBegin ();
+
+  pred = Go::SplineCurve ( n_coefs, order, it_begin, coefs.begin(), CurveBase::dim_ );
+
+  return pred;
+}
+
+// Predict the spline curve at the design coordinates coord
 vector<Go::SplineCurve>
 fkrig::Curve::Predict ( MatrixXd& coord ) const
 {
@@ -237,7 +297,7 @@ fkrig::Curve::Predict ( MatrixXd& coord ) const
     }
 
   // Compute the covariance matrix between coord and coord_
-  MatrixXd cov = cov_->ComputeCov ( u, coord.rows(), CurveBase::coord_.rows() );
+  MatrixXd cov = CurveBase::cov_->ComputeCov ( u, coord.rows(), CurveBase::coord_.rows() );
 
   // Compute the coefficients of the curves of the term S0 inv(S) (z - F a)
   MatrixXd dx_coefs = cov * dx_coefs_;
@@ -294,21 +354,21 @@ fkrig::Curve::PredictCovariance ( MatrixXd& coord ) const
 
   // Compute the matrix of pariwise distance between the rows of coord
   VectorXd u ( coord.rows() * coord.rows() );
-  Eigen::Matrix<double, 1, Eigen::Dynamic> temp ( coord.cols() );  
-  
+  Eigen::Matrix<double, 1, Eigen::Dynamic> temp ( coord.cols() );
+
   size_t count = 0;
 
   for ( size_t i = 0; i < coord.rows() ; ++i )
     for ( size_t j = 0; j < coord.rows(); ++j, ++count ) {
       temp = coord.row ( i ) - coord.row ( j );
       u ( count ) = std::sqrt ( temp * temp.adjoint() );
-    }  
-  
+    }
+
   // Compute the covariance matrix between the rows of coord
-  MatrixXd cov_0 = CurveBase::cov_->ComputeCov ( u, coord.rows(), coord.rows() );  
-  
+  MatrixXd cov_0 = CurveBase::cov_->ComputeCov ( u, coord.rows(), coord.rows() );
+
   // Compute the matrix of pariwise distance between coord and coord_
-  u.resize( CurveBase::coord_.rows() * coord.rows() );
+  u.resize ( CurveBase::coord_.rows() * coord.rows() );
   temp.resize ( CurveBase::coord_.cols() );
 
   count = 0;
@@ -321,26 +381,26 @@ fkrig::Curve::PredictCovariance ( MatrixXd& coord ) const
 
   // Compute the covariance matrix between coord and coord_
   MatrixXd cov_1 = CurveBase::cov_->ComputeCov ( u, coord.rows(), CurveBase::coord_.rows() );
-  
+
   // Compute the coefficients of the curves of the term F_0 a
-  MatrixXd F_0 = CurveBase::MakeModelMatrix ( coord ) ;  
-  
+  MatrixXd F_0 = CurveBase::MakeModelMatrix ( coord ) ;
+
   // Compute cholesky decomposition of sigma_
   Eigen::LLT<MatrixXd> llt_s, llt_f;
   llt_s.compute ( CurveBase::sigma_ );
- 
+
   // Compute inv( simga_ ) F
   MatrixXd sf = llt_s.solve ( CurveBase::F_ );
-  
+
   // Compute cholesky decomposition of F' inv( sigma_ ) F
   llt_f.compute ( CurveBase::F_.transpose () * sf );
-  
+
   // Compute F_0 - cov_1' inv( sigma_ ) F_
 //   MatrixXd temp_1 = F_0 - cov_1.transpose () * sf;
   MatrixXd temp_1 = F_0 - cov_1 * sf;
-  
+
   MatrixXd cov = cov_0 - cov_1 * llt_s.solve ( cov_1.transpose () ) + temp_1 * llt_f.solve ( temp_1.transpose () );
-  
+
   return cov;
 }
 

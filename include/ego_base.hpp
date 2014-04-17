@@ -104,7 +104,7 @@ public:
    *  @param coord value of the coordinate in the design space
    */
   virtual double
-  ComputeMean ( MatrixXd coord ) const = 0;
+  ComputeMean ( RVectorXd coord ) const = 0;
 
   /*! Compute the value of the variance at the design coordinates coord
    *

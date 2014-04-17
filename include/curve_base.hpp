@@ -16,6 +16,7 @@ using std::unique_ptr;
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> MatrixXd;
 typedef Eigen::Matrix<double, Eigen::Dynamic, 1> VectorXd;
+typedef Eigen::Matrix<double, 1, Eigen::Dynamic> RVectorXd;
 
 namespace fkrig {
 
@@ -116,6 +117,13 @@ public:
   Predict ( MatrixXd& coord,
             int n_u ) const;
 
+  /*! Predict the spline curve at the design coordinates coord
+   *
+   * @param coord matrix of coordinates of the new desing locations
+   */
+  virtual Go::SplineCurve
+  Predict ( RVectorXd& coord ) const = 0;            
+            
   /*! Predict the spline curve at the design coordinates coord
    *
    * @param coord matrix of coordinates of the new desing locations
