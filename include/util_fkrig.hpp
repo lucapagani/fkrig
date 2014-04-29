@@ -100,6 +100,18 @@ MeanEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
               double param,
               vector<MatrixXd> llt_sigma_folded );
 
+//! Compute the expected value of the 2d folded normal distribution
+Eigen::Vector2d
+MeanCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
+            double param,
+            vector<MatrixXd> llt_sigma_folded );
+
+//! Compute the variance for the expected improvment
+double
+VarianceEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
+                  double param,
+                  vector<MatrixXd> llt_sigma_folded );
+
 //! Compute the square of the surface in the parametric point param
 int
 square_surface_point ( unsigned ndim,

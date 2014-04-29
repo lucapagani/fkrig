@@ -111,7 +111,7 @@ public:
    *  @param coord value of the coordinate in the design space
    */
   virtual double
-  ComputeVariance ( MatrixXd coord ) const = 0;
+  ComputeVariance ( RVectorXd coord ) const = 0;
   
   //! Return the index of the closest curve (surface) to the nominal curve (surface)
   size_t

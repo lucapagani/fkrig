@@ -80,7 +80,7 @@ public:
    *  @param coord value of the coordinate in the design space
    */
   double
-  ComputeVariance ( MatrixXd coord ) const;
+  ComputeVariance ( RVectorXd coord ) const;
 
   /*! Compute the expected improvment in location coord
    *

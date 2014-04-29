@@ -50,7 +50,7 @@ fkrig::EgoBase::Compute ()
   opt_glob.set_maxeval ( max_iter_glob_ );
   opt_loc.set_maxeval ( max_iter_loc_ );
   
-  opt_glob.set_local_optimizer( opt_loc );
+//   opt_glob.set_local_optimizer( opt_loc );
   
   // Chose a starting point
   std::vector<double> x0 ( lb_.size(), 0. );

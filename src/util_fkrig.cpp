@@ -180,6 +180,22 @@ MeanEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
               double param,
               vector<MatrixXd> llt_sigma_folded )
 {
+
+  // Compute the expected value of the 2d folden normal distribution
+  Eigen::Vector2d mu = MeanCurve ( curve_ptr, param, llt_sigma_folded );
+
+  // Compute mu_0 - mu_1
+  double value = mu ( 0 ) - mu ( 1 );
+
+  return value;
+}
+
+//! Compute the expected value of the 2d folded normal distribution
+Eigen::Vector2d
+MeanCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
+            double param,
+            vector<MatrixXd> llt_sigma_folded )
+{
   // Compute the inverse of llt_sigma_folded
   MatrixXd inv_llt_sigma_folded_0 = llt_sigma_folded[0].inverse();
   MatrixXd inv_llt_sigma_folded_1 = llt_sigma_folded[1].inverse();
@@ -196,41 +212,166 @@ MeanEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
   normal z;
 
   // Compute values of inv_llt_sigma_folded * mu
-  // s1 = s2 = 1
+  // k1 = k2 = 1
   Eigen::Vector2d prod_0 = inv_llt_sigma_folded_0 * mu;
-  // s1 = 1, s2 = -1
+  // k1 = 1, k2 = -1
   mu ( 1 ) = - mu ( 1 );
   Eigen::Vector2d prod_1 = inv_llt_sigma_folded_1 * mu;
-  // s1 = s2 = -1
+  // k1 = k2 = -1
   mu ( 0 ) = - mu ( 0 );
   Eigen::Vector2d prod_3 = inv_llt_sigma_folded_0 * mu;
-  // s1 = -1, s2 = 1
+  // k1 = -1, k2 = 1
   mu ( 1 ) = - mu ( 1 );
   Eigen::Vector2d prod_2 = inv_llt_sigma_folded_1 * mu;
 
   // Compute mean of the first entry of the vector mu
-  // s1 = s2 = 1
+  // k1 = k2 = 1
   double mu_0_0 = point_0[0] * cdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 0,0 ) * pdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) );
-  // s1 = 1, s2 = -1
+  // k1 = 1, k2 = -1
   double mu_0_1 = point_0[0] * cdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 0,0 ) * pdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) );
-  // s1 = -1, s2 = 1
+  // k1 = -1, k2 = 1
   double mu_0_2 = - point_0[0] * cdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 0,0 ) * pdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) );
-  // s1 = -1, s2 = -1
+  // k1 = -1, k2 = -1
   double mu_0_3 = - point_0[0] * cdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 0,0 ) * pdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) );
 
-  // s1 = s2 = 1
+  // k1 = k2 = 1
   double mu_1_0 = point_1[0] * cdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 1,0 ) * pdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 1,1 ) * pdf ( z, prod_0 ( 1 ) ) * cdf ( z, prod_0 ( 0 ) );
-  // s1 = 1, s2 = -1
+  // k1 = 1, k2 = -1
   double mu_1_1 = point_1[0] * cdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_1 ( 1 ) ) * cdf ( z, prod_1 ( 0 ) );
-  // s1 = -1, s2 = 1
+  // k1 = -1, k2 = 1
   double mu_1_2 = - point_1[0] * cdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_2 ( 1 ) ) * cdf ( z, prod_2 ( 0 ) );
-  // s1 = -1, s2 = -1
+  // k1 = -1, k2 = -1
   double mu_1_3 = - point_1[0] * cdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 1,0 ) * pdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 1,1 ) * pdf ( z, prod_3 ( 1 ) ) * cdf ( z, prod_3 ( 0 ) );
 
-  // Compute mu_0 - mu_1
-  double mu_delta = mu_0_0 + mu_0_1 + mu_0_2 + mu_0_3 - ( mu_1_0 + mu_1_1 + mu_1_2 + mu_1_3 );
+  // Compute mu
+  Eigen::Vector2d mu_delta;
+  mu_delta << mu_0_0 + mu_0_1 + mu_0_2 + mu_0_3, mu_1_0 + mu_1_1 + mu_1_2 + mu_1_3;
 
   return mu_delta;
+}
+
+//! Compute the variance for the expected improvment
+double
+VarianceEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
+                  double param,
+                  vector<MatrixXd> llt_sigma_folded )
+{
+  // Compute the inverse of llt_sigma_folded
+  MatrixXd inv_llt_sigma_folded_0 = llt_sigma_folded[0].inverse();
+  MatrixXd inv_llt_sigma_folded_1 = llt_sigma_folded[1].inverse();
+
+  // Compute the mean on the param value
+  Go::Point point_0, point_1;
+  curve_ptr[0]->point ( point_0, param );
+  curve_ptr[1]->point ( point_1, param );
+
+  // Store values in a vector
+  Eigen::Vector2d mu_0 ( 2 );
+  mu_0 << point_0[0], point_1[0];
+
+  // Compute the expected value of the 2d folden normal distribution
+  Eigen::Vector2d mu = MeanCurve ( curve_ptr, param, llt_sigma_folded );
+
+  normal z;
+
+  // Compute values of inv_llt_sigma_folded * mu
+  // k1 = k2 = 1
+  Eigen::Vector2d prod_0 = inv_llt_sigma_folded_0 * mu_0;
+  // k1 = 1, k2 = -1
+  Eigen::Vector2d mu_1;
+  mu_1 << mu_0 ( 0 ),  - mu_0 ( 1 );
+  Eigen::Vector2d prod_1 = inv_llt_sigma_folded_1 * mu_1;
+  // k1 = -1, k2 = 1
+  Eigen::Vector2d mu_2 = - mu_1;
+  Eigen::Vector2d prod_2 = inv_llt_sigma_folded_1 * mu_2;
+  // k1 = k2 = -1
+  Eigen::Vector2d mu_3 = - mu_0;
+  Eigen::Vector2d prod_3 = inv_llt_sigma_folded_0 * mu_3;
+
+  // Compute the vector of pdf and cdf
+  Eigen::Vector2d pdf_0;
+  pdf_0 << pdf ( z, prod_0 ( 0 ) ), pdf ( z, prod_0 ( 1 ) );
+  Eigen::Vector2d pdf_1;
+  pdf_1 << pdf ( z, prod_1 ( 0 ) ), pdf ( z, prod_1 ( 1 ) );
+  Eigen::Vector2d pdf_2;
+  pdf_2 << pdf ( z, prod_2 ( 0 ) ), pdf ( z, prod_2 ( 1 ) );
+  Eigen::Vector2d pdf_3;
+  pdf_3 << pdf ( z, prod_3 ( 0 ) ), pdf ( z, prod_3 ( 1 ) );
+  Eigen::Vector2d cdf_0;
+  cdf_0 << cdf ( z, prod_0 ( 0 ) ), cdf ( z, prod_0 ( 1 ) );
+  Eigen::Vector2d cdf_1;
+  cdf_1 << cdf ( z, prod_1 ( 0 ) ), cdf ( z, prod_1 ( 1 ) );
+  Eigen::Vector2d cdf_2;
+  cdf_2 << cdf ( z, prod_2 ( 0 ) ), cdf ( z, prod_2 ( 1 ) );
+  Eigen::Vector2d cdf_3;
+  cdf_3 << cdf ( z, prod_3 ( 0 ) ), cdf ( z, prod_3 ( 1 ) );
+
+  // Compute the product between the cdf and pdf
+  Eigen::Vector2d pf_0;
+  pf_0 << pdf_0 ( 0 ) * cdf_0 ( 1 ), pdf_0 ( 1 ) * cdf_0 ( 0 );
+  Eigen::Vector2d pf_1;
+  pf_1 << pdf_1 ( 0 ) * cdf_1 ( 1 ), pdf_1 ( 1 ) * cdf_1 ( 0 );
+  Eigen::Vector2d pf_2;
+  pf_2 << pdf_2 ( 0 ) * cdf_2 ( 1 ), pdf_2 ( 1 ) * cdf_2 ( 0 );
+  Eigen::Vector2d pf_3;
+  pf_3 << pdf_3 ( 0 ) * cdf_3 ( 1 ), pdf_3 ( 1 ) * cdf_3 ( 0 );
+
+  // Compute the terms I_k
+  Eigen::Matrix2d i_0;
+  i_0 << cdf_0 ( 0 ) * cdf_0 ( 1 ) - prod_0 ( 0 ) * pdf_0 ( 0 ), pdf_0 ( 0 ) * pdf_0 ( 1 ),
+      pdf_0 ( 0 ) * pdf_0 ( 1 ), cdf_0 ( 0 ) * cdf_0 ( 1 ) - prod_0 ( 1 ) * pdf_0 ( 1 );
+  Eigen::Matrix2d i_1;
+  i_1 << cdf_1 ( 0 ) * cdf_1 ( 1 ) - prod_1 ( 0 ) * pdf_1 ( 0 ), pdf_1 ( 0 ) * pdf_1 ( 1 ),
+      pdf_1 ( 0 ) * pdf_1 ( 1 ), cdf_1 ( 0 ) * cdf_1 ( 1 ) - prod_1 ( 1 ) * pdf_1 ( 1 );
+  Eigen::Matrix2d i_2;
+  i_2 << cdf_2 ( 0 ) * cdf_2 ( 1 ) - prod_2 ( 0 ) * pdf_2 ( 0 ), pdf_2 ( 0 ) * pdf_2 ( 1 ),
+      pdf_2 ( 0 ) * pdf_2 ( 1 ), cdf_2 ( 0 ) * cdf_2 ( 1 ) - prod_2 ( 1 ) * pdf_2 ( 1 );
+  Eigen::Matrix2d i_3;
+  i_3 << cdf_3 ( 0 ) * cdf_3 ( 1 ) - prod_3 ( 0 ) * pdf_3 ( 0 ), pdf_3 ( 0 ) * pdf_3 ( 1 ),
+      pdf_3 ( 0 ) * pdf_3 ( 1 ), cdf_3 ( 0 ) * cdf_3 ( 1 ) - prod_3 ( 1 ) * pdf_3 ( 1 );
+
+  // Compute the first addend of the covariance matrix
+  // k1 = k2 = 1
+  Eigen::Matrix2d add_0_0 = mu_0 * mu_0.transpose() * cdf_0 ( 0 ) * cdf_0 ( 1 );
+  // k1 = 1, k2 = -1
+  Eigen::Matrix2d add_0_1 = mu_1 * mu_1.transpose() * cdf_1 ( 0 ) * cdf_1 ( 1 );
+  // k1 = -1, k2 = 1
+  Eigen::Matrix2d add_0_2 = mu_2 * mu_2.transpose() * cdf_2 ( 0 ) * cdf_2 ( 1 );
+  // k1 = k2 = -1
+  Eigen::Matrix2d add_0_3 = mu_3 * mu_3.transpose() * cdf_3 ( 0 ) * cdf_3 ( 1 );
+
+  // Compute the second addend of the covariance matrix
+  // k1 = k2 = 1
+  Eigen::Matrix2d add_1_0 = llt_sigma_folded[0] * pf_0 * mu_0.transpose();
+  // k1 = 1, k2 = -1
+  Eigen::Matrix2d add_1_1 = llt_sigma_folded[1] * pf_1 * mu_1.transpose();
+  // k1 = -1, k2 = 1
+  Eigen::Matrix2d add_1_2 = llt_sigma_folded[1] * pf_2 * mu_2.transpose();
+  // k1 = k2 = -1
+  Eigen::Matrix2d add_1_3 = llt_sigma_folded[0] * pf_3 * mu_3.transpose();
+
+  // Compute the forth addend of the covariance matrix
+  // k1 = k2 = 1
+  Eigen::Matrix2d add_3_0 = llt_sigma_folded[0] * i_0 * llt_sigma_folded[0].transpose();
+  // k1 = 1, k2 = -1
+  Eigen::Matrix2d add_3_1 = llt_sigma_folded[1] * i_1 * llt_sigma_folded[1].transpose();
+  // k1 = -1, k2 = 1
+  Eigen::Matrix2d add_3_2 = llt_sigma_folded[1] * i_2 * llt_sigma_folded[1].transpose();
+  // k1 = k2 = -1
+  Eigen::Matrix2d add_3_3 = llt_sigma_folded[0] * i_3 * llt_sigma_folded[0].transpose();
+
+  // Compute the covariance matrix
+  Eigen::Matrix2d cov = add_0_0 + add_1_0 + add_1_0.transpose() + add_3_0 +
+                        add_0_1 + add_1_1 + add_1_1.transpose() + add_3_1 +
+                        add_0_2 + add_1_2 + add_1_2.transpose() + add_3_2 +
+                        add_0_3 + add_1_3 + add_1_3.transpose() + add_3_3 -
+                        mu * mu.transpose();
+
+  // Compute the variance of the expected improvment
+  double variance = cov ( 0, 0 ) + cov ( 1,1 ) - cov ( 0,1 ) - cov ( 1,0 );
+  
+  return variance;
+
 }
 
 //! Compute the squre of the surface in the parametric point param

@@ -399,7 +399,7 @@ fkrig::Curve::PredictCovariance ( MatrixXd& coord ) const
 //   MatrixXd temp_1 = F_0 - cov_1.transpose () * sf;
   MatrixXd temp_1 = F_0 - cov_1 * sf;
 
-  MatrixXd cov = cov_0 - cov_1 * llt_s.solve ( cov_1.transpose () ) + temp_1 * llt_f.solve ( temp_1.transpose () );
+  MatrixXd cov = cov_0 - cov_1 * llt_s.solve ( cov_1.transpose () ); // + temp_1 * llt_f.solve ( temp_1.transpose () );
 
   return cov;
 }

@@ -31,6 +31,7 @@ enum cov_type { MATERN_5_2, //!< Matern correlation function with nu=2.5
                 POW_EXP, //!< Powered exponential correlation function
                 EXP, //!< Exponential correlation function
                 GAUSS //!< Gaussian correlation function
+//                 PURE_NUGGET //!< Pure nugget, no correlation
               };
 
 class Covariance {
