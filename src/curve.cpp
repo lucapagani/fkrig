@@ -105,7 +105,7 @@ fkrig::Curve::Eval()
   // Store the coefficients of the term a in a temp variable
   MatrixXd temp_a ( a_coefs_.rows(), a_coefs_.cols() );
   temp_a = a_coefs_;
-
+  
   // Compute the coefficients of the term m with LS method
   ComputeMLs ();
 
@@ -409,7 +409,7 @@ void
 fkrig::Curve::ComputeALs ()
 {
   // Resize a_coefs_
-  a_coefs_.resize ( F_.cols(), F_.rows() );
+  a_coefs_.resize ( CurveBase::F_.cols(), CurveBase::F_.rows() );
 
   if ( CurveBase::model_ == 0 ) {
     // Compute F'F
@@ -512,6 +512,7 @@ fkrig::Curve::ComputeSqPairwiseDistances ()
   size_t n_coefs = CurveBase::curve_ptr_[0]->numCoefs (), order = CurveBase::curve_ptr_[0]->order ();
   vector<double>::const_iterator it_begin = CurveBase::curve_ptr_[0]->knotsBegin ();
   Go::SplineCurve curve;
+//   shared_ptr<Go::SplineCurve> curve;
   int it = 0;
 
   double value = 0.;
@@ -525,6 +526,13 @@ fkrig::Curve::ComputeSqPairwiseDistances ()
       // Create the curve of the pairwise difference
       curve = Go::SplineCurve ( n_coefs, order, it_begin, diff_i_j.begin(), CurveBase::dim_ );
 
+//       // Create the curve of the pairwise difference
+//       curve.reset ( new Go::SplineCurve ( n_coefs, order, it_begin, diff_i_j.begin(), CurveBase::dim_ ) );
+//       
+//       // Compute the difference between the curves and the difference between the mean term
+//       curve = Go::GeometryTools::curveSum ( *( CurveBase::curve_ptr_[i] ), 1, *curve, 1 );
+//       curve = Go::GeometryTools::curveSum ( *( CurveBase::curve_ptr_[j] ), -1, *curve, 1 );
+      
       // Fill the vector of the differeces between the observed spline and the mean terms
       value = fkrig::adaptiveSimpsons ( fkrig::square_curve_point, curve, CurveBase::range_points_.first, CurveBase::range_points_.second, 1e-6, 10 );
       CurveBase::par_sq_dist_[it] = value;

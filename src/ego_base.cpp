@@ -21,14 +21,14 @@ fkrig::EgoBase::EgoBase ( vector<double> lb,
   }
 
   // Resize matrix
-  coord_ego_.resize ( 2, lb.size () );
+  coord_ego_.resize ( 1, lb.size () );
 }
 
 //! Find the design coordinate that maximize the expected improvment
 void
 fkrig::EgoBase::Compute ()
 {
-  
+
   // Find the function with the minimum value
   ComputeMin();
 
@@ -36,31 +36,83 @@ fkrig::EgoBase::Compute ()
   nlopt::opt opt_glob ( glob_alg_, lb_.size() );
   // Create a local optimization object
   nlopt::opt opt_loc ( loc_alg_, lb_.size() );
-  
+
   nlopt::vfunc f = &fkrig::ObjectiveFunction;
-  
+
+  // Set bounds
+  opt_glob.set_lower_bounds ( lb_ );
+  opt_glob.set_upper_bounds ( ub_ );
+  opt_loc.set_lower_bounds ( lb_ );
+  opt_loc.set_upper_bounds ( ub_ );
+
   // Set the objective function
   opt_glob.set_max_objective ( f, this );
 
   // Set the relative x tollerance
   opt_glob.set_xtol_rel ( x_tol_glob_ );
-  opt_loc.set_xtol_rel (x_tol_loc_ );
-  
+  opt_loc.set_xtol_rel ( x_tol_loc_ );
+
   // Set the maximum number of iterations
   opt_glob.set_maxeval ( max_iter_glob_ );
   opt_loc.set_maxeval ( max_iter_loc_ );
-  
-//   opt_glob.set_local_optimizer( opt_loc );
-  
+
+  opt_glob.set_local_optimizer ( opt_loc );
+
   // Chose a starting point
   std::vector<double> x0 ( lb_.size(), 0. );
   for ( size_t i = 0; i < x0.size(); ++i )
-    x0[i] = ( lb_[i] + ub_[i] ) / 2; 
+    x0[i] = ( lb_[i] + ub_[i] ) / 2;
 
   // Preform the optimization
   result_ = opt_glob.optimize ( x0, value_ );
+//     result_ = opt_loc.optimize ( x0, value_ );
+
+  x_max_ = x0;
 
 }
+
+// //! Find the design coordinate that minimize the distance between the predicted curve (surface) and the nominal curve (surface)
+// void
+// fkrig::EgoBase::ComputeMinDist ()
+// {
+//   
+//   // Create a global optimization object
+//   nlopt::opt opt_glob ( glob_alg_, lb_.size() );
+//   // Create a local optimization object
+//   nlopt::opt opt_loc ( loc_alg_, lb_.size() );
+// 
+//   nlopt::vfunc f = &fkrig::ObjectiveFunctionMin;
+// 
+//   // Set bounds
+//   opt_glob.set_lower_bounds ( lb_ );
+//   opt_glob.set_upper_bounds ( ub_ );
+//   opt_loc.set_lower_bounds ( lb_ );
+//   opt_loc.set_upper_bounds ( ub_ );
+// 
+//   // Set the objective function
+//   opt_glob.set_min_objective ( f, this );  
+//   
+//   // Set the relative x tollerance
+//   opt_glob.set_xtol_rel ( x_tol_glob_ );
+//   opt_loc.set_xtol_rel ( x_tol_loc_ );
+// 
+//   // Set the maximum number of iterations
+//   opt_glob.set_maxeval ( max_iter_glob_ );
+//   opt_loc.set_maxeval ( max_iter_loc_ );
+// 
+//   opt_glob.set_local_optimizer ( opt_loc );
+// 
+//   // Chose a starting point
+//   std::vector<double> x0 ( lb_.size(), 0. );
+//   for ( size_t i = 0; i < x0.size(); ++i )
+//     x0[i] = ( lb_[i] + ub_[i] ) / 2;
+// 
+//   // Preform the optimization
+//   result_min_ = opt_glob.optimize ( x0, value_min_ );
+// 
+//   x_min_ = x0;  
+//   
+// }
 
 //! Compute the expected improvment in location coord
 // double
@@ -70,10 +122,10 @@ fkrig::EgoBase::Compute ()
 //   double mean = ComputeMean ( coord_ego_ );
 //   double sigma = std::sqrt ( ComputeVariance ( coord_ego_ ) );
 //   double ratio = mean / sigma;
-// 
+//
 //   // Compute the value of the expected improvment
 //   double value = sigma * boost::math::pdf ( z_, ratio ) + mean * boost::math::cdf ( z_, ratio );
-// 
+//
 //   return value;
 // }
 
@@ -83,19 +135,19 @@ fkrig::EgoBase::Compute ()
 //                                     const vector<double> &grad,
 //                                     void* param )
 // {
-// 
+//
 //   // Fill the row of the second point
 //   for ( size_t i = 0; i < x.size (); ++i )
 //     coord_ego_ ( 1,i ) = x[i];
-// 
+//
 //   // Compute mean and variance of random variable
 //   double mean = ComputeMean ( coord_ego_ );
 //   double sigma = std::sqrt ( ComputeVariance ( coord_ego_ ) );
 //   double ratio = mean / sigma;
-// 
+//
 //   // Compute the value of the expected improvment
 //   double value = sigma * boost::math::pdf ( z_, ratio ) + mean * boost::math::cdf ( z_, ratio );
-// 
+//
 //   return value;
 // }
 

@@ -51,7 +51,14 @@ public:
             vector<double>& param_u,
             vector<double>& param_v ) const;
 
-  /*! Predict the spline curve at the design coordinates coord
+  /*! Predict the spline surface at the design coordinates coord
+   *
+   * @param coord row vector of coordinates of the new desing locations
+   */
+  Go::SplineSurface
+  Predict ( RVectorXd& coord ) const;            
+            
+  /*! Predict the spline surface at the design coordinates coord
    *
    * @param coord matrix of coordinates of the new desing locations
    */

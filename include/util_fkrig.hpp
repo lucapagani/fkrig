@@ -4,6 +4,8 @@
 #include "curve.hpp"
 #include "surface.hpp"
 #include "ego_base.hpp"
+#include "ego_curve.hpp"
+#include "ego_surface.hpp"
 #include <boost/math/distributions/normal.hpp> // for normal_distribution
 
 using boost::math::normal; // typedef provides default type is double.
@@ -94,6 +96,12 @@ e_abs_curve_point ( Go::SplineCurve curve,
                     double param,
                     double sd );
 
+//! Compute the variance of the absolute value of the curve in the parametric point param
+double
+VarAbsCurvePoint ( Go::SplineCurve curve,
+                   double param,
+                   double sd );
+
 //! Compute the expected value for the expected improvment
 double
 MeanEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
@@ -122,22 +130,82 @@ square_surface_point ( unsigned ndim,
 
 //! Compute the absolute value of the surface in the parametric point param
 int
-abs_surface_point ( unsigned ndim,
-                    const double *x,
-                    void *surface,
-                    unsigned fdim,
-                    double *fval );
+AbsSurfPoint ( unsigned ndim,
+               const double *x,
+               void *surface,
+               unsigned fdim,
+               double *fval );
+
+//! Compute the expected value of the absolute value of the surface in the parametric point param
+int
+EAbsSurfPoint ( unsigned ndim,
+                const double *x,
+                void *util_surf,
+                unsigned fdim,
+                double *fval );
+
+//! Compute the variance of the absolute value of the curve in the parametric point param
+int
+VarAbsSurfPoint ( unsigned ndim,
+                  const double *x,
+                  void *util_surf,
+                  unsigned fdim,
+                  double *fval );
+
+//! Compute the expected value for the expected improvment
+int
+MeanEiSurf ( unsigned ndim,
+             const double *x,
+             void *util_surf,
+             unsigned fdim,
+             double *fval );
+
+//! Compute the expected value of the 2d folded normal distribution
+Eigen::Vector2d
+MeanSurf ( vector< shared_ptr <Go::SplineSurface> > surf_ptr,
+           const double *x,
+           vector<MatrixXd> llt_sigma_folded );
+
+//! Compute the variance for the expected improvment
+int
+VarianceEiSurf ( unsigned ndim,
+                 const double *x,
+                 void *util_surf,
+                 unsigned fdim,
+                 double *fval );
 
 /*! Objective function for the maximization of the expected improvment
  *
  *  @param x value of the coordinates in the disegn space
  *  @param grad value of the gradient
- *  @param param vector with value of the mean and standard deviazion of the random variable
+ *  @param param pointer to ego object
  */
 double
 ObjectiveFunction ( const vector<double> &x,
                     vector<double> &grad,
                     void* ego_obj );
+
+/*! Objective function for the minization of the distance between the predicted function and the nominal function
+ *
+ *  @param x value of the coordinates in the disegn space
+ *  @param grad value of the gradient
+ *  @param param pointer to ego object
+ */
+double
+ObjectiveFunctionMinCurve ( const vector<double> &x,
+                            vector<double> &grad,
+                            void* ego_obj );
+
+/*! Objective function for the minization of the distance between the predicted function and the nominal function
+ *
+ *  @param x value of the coordinates in the disegn space
+ *  @param grad value of the gradient
+ *  @param param pointer to ego object
+ */
+double
+ObjectiveFunctionMinSurf ( const vector<double> &x,
+                           vector<double> &grad,
+                           void* ego_obj );
 
 // // struct covariance_residual_mater_5_2_fix_nugget { double x_; double y_; };
 // struct covariance_residual_mater_5_2_fix_nugget {

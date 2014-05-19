@@ -1,7 +1,7 @@
 #include "curve_base.hpp"
 #include "util_fkrig.hpp"
 
-using std::vector ;
+using std::vector;
 
 namespace fkrig {
 

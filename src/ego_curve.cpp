@@ -86,7 +86,7 @@ fkrig::EgoCurve::ComputeMean ( RVectorXd coord ) const
     // Predict in the coordinate coord
     Go::SplineCurve curve = f_curve_->Predict ( coord );
 
-    MatrixXd coord_ego ( EgoBase::coord_ego_.rows(), EgoBase::coord_ego_.cols() );
+    MatrixXd coord_ego ( 2, EgoBase::coord_ego_.cols() );
 
     coord_ego.row ( 0 ) = EgoBase::coord_ego_.row ( 0 );
     coord_ego.row ( 1 ) = coord.row ( 0 );
@@ -112,10 +112,15 @@ fkrig::EgoCurve::ComputeMean ( RVectorXd coord ) const
     // Compute the covariance for each s
     sigma_folded /= ( range.second - range.first );
 
-    if ( sigma_folded ( 0,0 ) < 1e-12 && sigma_folded ( 1,1 ) < 1e-12 ) {
+    if ( ( sigma_folded ( 0,0 ) < 1e-12 && sigma_folded ( 1,1 ) < 1e-12 ) || sigma_folded.determinant () < 1e-6 ) {
 
       value = fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, * ( curves_ptr[0] ), range_points_.first, range_points_.second, 1e-6, 10 );
       value -= fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, * ( curves_ptr[1] ), range_points_.first, range_points_.second, 1e-6, 10 );
+
+    } else if ( sigma_folded ( 0,0 ) < 1e-12 ) {
+
+      value = fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, * ( curves_ptr[0] ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value -= fkrig::adaptiveSimpsons ( fkrig::e_abs_curve_point, * ( curves_ptr[1] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
 
     } else {
 
@@ -163,7 +168,7 @@ fkrig::EgoCurve::ComputeVariance ( RVectorXd coord ) const
     // Predict in the coordinate coord
     Go::SplineCurve curve = f_curve_->Predict ( coord );
 
-    MatrixXd coord_ego ( EgoBase::coord_ego_.rows(), EgoBase::coord_ego_.cols() );
+    MatrixXd coord_ego ( 2, EgoBase::coord_ego_.cols() );
 
     coord_ego.row ( 0 ) = EgoBase::coord_ego_.row ( 0 );
     coord_ego.row ( 1 ) = coord.row ( 0 );
@@ -189,7 +194,9 @@ fkrig::EgoCurve::ComputeVariance ( RVectorXd coord ) const
     // Compute the covariance for each s
     sigma_folded /= ( range.second - range.first );
 
-    if ( sigma_folded ( 0,0 ) >= 1e-12 || sigma_folded ( 1,1 ) >= 1e-12 ) {
+//     std::cout << sigma_folded.determinant() << "\n";
+
+    if ( ( sigma_folded ( 0,0 ) >= 1e-12 && sigma_folded ( 1,1 ) >= 1e-12 ) && sigma_folded.determinant () >= 1e-6 ) {
 
       Eigen::LLT<MatrixXd> llt;
       vector<MatrixXd> llt_sigma_folded;
@@ -209,12 +216,18 @@ fkrig::EgoCurve::ComputeVariance ( RVectorXd coord ) const
 
       value = fkrig::adaptiveSimpsons ( &fkrig::VarianceEiCurve, curves_ptr, llt_sigma_folded, range_points_.first, range_points_.second, 1e-6, 10 );
 
+//     } else if ( sigma_folded ( 1,1 ) >= 1e-12 && sigma_folded.determinant () >= 1e-6 ) {
+    } else if ( sigma_folded ( 0,0 ) >= 1e-12 || sigma_folded ( 1,1 ) >= 1e-12 ){
+
+      value = fkrig::adaptiveSimpsons ( &fkrig::VarAbsCurvePoint, * ( curves_ptr[0] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value += fkrig::adaptiveSimpsons ( &fkrig::VarAbsCurvePoint, * ( curves_ptr[1] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
+
     }
 
   }
 
-  return value;  
-  
+  return value;
+
 }
 
 //! Compute the expected improvment in location coord
@@ -243,7 +256,7 @@ fkrig::EgoCurve::ComputeMin ()
   EgoBase::index_min_ = ( std::min_element ( distance.begin (), distance.end () ) - distance.begin () );
 
   // Save the geometric coordinate of the minimum
-  EgoBase::coord_ego_.row ( 0 ) = coord.row ( EgoBase::index_min_ );
+  EgoBase::coord_ego_ = coord.row ( EgoBase::index_min_ );
   // Save the predicted curve with miminum expected L1 distance
   curve_min_ = curves[EgoBase::index_min_];
 }
@@ -261,6 +274,49 @@ fkrig::EgoCurve::ComputeUniqueRange ()
 
   // The range is computed as the maximum of the minimum value and the minimum of the maximum values
   range_points_ = std::make_pair ( std::max ( range_curves.first, min_par ), std::min ( range_curves.second, max_par ) );
+}
+
+//! Find the design coordinate that minimize the distance between the predicted surface and the nominal surface
+void
+fkrig::EgoCurve::ComputeMinDist ()
+{
+  
+  // Create a global optimization object
+  nlopt::opt opt_glob ( EgoBase::glob_alg_, EgoBase::lb_.size() );
+  // Create a local optimization object
+  nlopt::opt opt_loc ( EgoBase::loc_alg_, EgoBase::lb_.size() );
+
+  nlopt::vfunc f = &fkrig::ObjectiveFunctionMinCurve;
+
+  // Set bounds
+  opt_glob.set_lower_bounds ( EgoBase::lb_ );
+  opt_glob.set_upper_bounds ( EgoBase::ub_ );
+  opt_loc.set_lower_bounds ( EgoBase::lb_ );
+  opt_loc.set_upper_bounds ( EgoBase::ub_ );
+
+  // Set the objective function
+  opt_glob.set_min_objective ( f, this );  
+  
+  // Set the relative x tollerance
+  opt_glob.set_xtol_rel ( EgoBase::x_tol_glob_ );
+  opt_loc.set_xtol_rel ( EgoBase::x_tol_loc_ );
+
+  // Set the maximum number of iterations
+  opt_glob.set_maxeval ( EgoBase::max_iter_glob_ );
+  opt_loc.set_maxeval ( EgoBase::max_iter_loc_ );
+
+  opt_glob.set_local_optimizer ( opt_loc );
+
+  // Chose a starting point
+  std::vector<double> x0 ( EgoBase::lb_.size(), 0. );
+  for ( size_t i = 0; i < x0.size(); ++i )
+    x0[i] = ( EgoBase::lb_[i] + EgoBase::ub_[i] ) / 2;
+
+  // Preform the optimization
+  EgoBase::result_min_ = opt_glob.optimize ( x0, EgoBase::value_min_ );
+
+  EgoBase::x_min_ = x0;  
+  
 }
 
 } // End of namespace

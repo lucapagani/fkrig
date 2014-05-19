@@ -546,7 +546,7 @@ fkrig::Covariance::Estimate ( VectorXd& u,
   fkrig::Covariance::Eval ( u );
 
   if ( nugget_ < 0. ) {
-    std::cout <<  "\33[0;33m" << "Nugget less than 0 -> setting nugget to 0 and re-run the algorithm\n" << "\33[0m" ;
+    std::cout <<  "\33[0;31m" << "Nugget less than 0 -> setting nugget to 0 and re-run the algorithm\n" << "\33[0m" ;
     nugget_ = 0.;
     fix_nugget_ = true;
     Estimate ( u, v );

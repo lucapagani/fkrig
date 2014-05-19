@@ -20,6 +20,7 @@ using std::unique_ptr;
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> MatrixXd;
 typedef Eigen::Matrix<double, Eigen::Dynamic, 1> VectorXd;
+typedef Eigen::Matrix<double, 1, Eigen::Dynamic> RVectorXd;
 
 namespace fkrig {
 
@@ -151,6 +152,13 @@ public:
             int n_u,
             int n_v ) const;
 
+  /*! Predict the spline surface at the design coordinates coord
+   *
+   * @param coord row vector of coordinates of the new desing locations
+   */
+  virtual Go::SplineSurface
+  Predict ( RVectorXd& coord ) const = 0;              
+            
   /*! Predict the spline curve at the design coordinates coord
    *
    * @param coord matrix of coordinates of the new desing locations
@@ -229,6 +237,30 @@ public:
     
     return value;
   };    
+ 
+  //! Return the distance between the points in the design space
+  VectorXd
+  get_dist_design () const {
+    return this->dist_; 
+  };
+  
+  //! Return the distance between the points in the geometric space
+  VectorXd
+  get_dist_geometric () const {
+    return this->par_sq_dist_; 
+  };  
+ 
+  //! Retrun the range of the surface in the u direction
+  std::pair<double, double>
+  get_range_u () const {
+    return this->range_points_u_;
+  };
+  
+  //! Retrun the range of the surface in the v direction
+  std::pair<double, double>
+  get_range_v () const {
+    return this->range_points_v_;
+  };  
   
 protected:
 

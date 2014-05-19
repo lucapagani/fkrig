@@ -119,7 +119,7 @@ public:
 
   /*! Predict the spline curve at the design coordinates coord
    *
-   * @param coord matrix of coordinates of the new desing locations
+   * @param coord row vector of coordinates of the new desing locations
    */
   virtual Go::SplineCurve
   Predict ( RVectorXd& coord ) const = 0;            
@@ -191,7 +191,6 @@ public:
   get_range () const {
     return this->range_points_;
   };
-  
  
   //! Return the range of the parametric space (max - min) 
   double
@@ -204,6 +203,18 @@ public:
     return value;
   };  
 
+  //! Return the distance between the points in the design space
+  VectorXd
+  get_dist_design () const {
+    return this->dist_; 
+  };
+  
+  //! Return the distance between the points in the geometric space
+  VectorXd
+  get_dist_geometric () const {
+    return this->par_sq_dist_; 
+  };  
+  
 protected:
 
   //! Compute the model matrix

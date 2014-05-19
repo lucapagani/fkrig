@@ -137,7 +137,66 @@ fkrig::Surf::Predict ( MatrixXd& coord,
   return points;
 }
 
-// Predict the spline curve at the design coordinates coord
+// Predict the spline surface at the design coordinates coord
+Go::SplineSurface
+fkrig::Surf::Predict ( RVectorXd& coord ) const
+{
+
+  // Check matrix coord
+  if ( SurfBase::coord_.cols() != coord.cols() ) {
+    std::cerr << "Matrix of coordinates must have the same number of columns" << std::endl;
+  }
+
+  // Compute the matrix of pariwise distance between coord and coord_
+  VectorXd u ( SurfBase::coord_.rows() * coord.rows() );
+  Eigen::Matrix<double, 1, Eigen::Dynamic> temp ( SurfBase::coord_.cols() );
+
+  for ( size_t j = 0; j < SurfBase::coord_.rows(); ++j ) {
+    temp = coord.row ( 0 ) - SurfBase::coord_.row ( j );
+    u ( j ) = std::sqrt ( temp * temp.adjoint() );
+  }
+
+  // Compute the covariance matrix between coord and coord_
+  MatrixXd cov = SurfBase::cov_->ComputeCov ( u, coord.rows(), SurfBase::coord_.rows() );
+
+  // Compute the coefficients of the curves of the term S0 inv(S) (z - F a)
+  MatrixXd dx_coefs = cov * dx_coefs_;
+
+  // Compute the coefficients of the curves of the term F_0 a
+  MatrixXd F_0 = SurfBase::MakeModelMatrix ( coord ) ;
+
+  // Obtain the vector of the coefficients of the surfaces and store them in a matrix
+  MatrixXd surf_coefs ( SurfBase::surf_ptr_.size(), SurfBase::surf_ptr_[0]->numCoefs_u() * SurfBase::surf_ptr_[0]->numCoefs_v() );
+
+  // Fill the matrix
+  std::vector< double >::const_iterator i_coefs_begin, i_coefs_end;
+  for ( size_t i = 0; i < SurfBase::surf_ptr_.size(); ++i ) {
+    i_coefs_begin = SurfBase::surf_ptr_[i]->coefs_begin () + SurfBase::dim_ - 1;
+    i_coefs_end = SurfBase::surf_ptr_[i]->coefs_end ();
+    for ( size_t j = 0 ; i_coefs_begin < i_coefs_end; i_coefs_begin += SurfBase::dim_, ++j )
+      surf_coefs ( i, j ) = *i_coefs_begin;
+  }
+
+  MatrixXd sx_coefs = F_0 * a_coefs_ * surf_coefs;
+
+  // Compute the coefficients of the predicted surfaces
+  vector<double> coefs;
+  coefs.resize ( sx_coefs.cols() );
+
+  for ( size_t i = 0; i < sx_coefs.cols(); ++i )
+      coefs[i] = sx_coefs ( i ) + dx_coefs ( i );
+
+  // Compute the predicted surfaces
+  Go::SplineSurface pred;
+
+  const Go::BsplineBasis basis_u = SurfBase::surf_ptr_[0]->basis_u(), basis_v = SurfBase::surf_ptr_[0]->basis_v();
+
+  pred = Go::SplineSurface ( basis_u, basis_v, coefs.begin(), SurfBase::dim_ );
+
+  return pred;
+}
+
+// Predict the spline surface at the design coordinates coord
 vector<Go::SplineSurface>
 fkrig::Surf::Predict ( MatrixXd& coord ) const
 {
@@ -221,8 +280,8 @@ fkrig::Surf::PredictCovariance ( MatrixXd& coord ) const
   size_t count = 0;
 
   for ( size_t i = 0; i < coord.rows() ; ++i )
-    for ( size_t j = 0; j < SurfBase::coord_.rows(); ++j, ++count ) {
-      temp = coord.row ( i ) - SurfBase::coord_.row ( j );
+    for ( size_t j = 0; j < coord.rows(); ++j, ++count ) {
+      temp = coord.row ( i ) - coord.row ( j );
       u ( count ) = std::sqrt ( temp * temp.adjoint() );
     }  
   
@@ -258,9 +317,9 @@ fkrig::Surf::PredictCovariance ( MatrixXd& coord ) const
   llt_f.compute ( SurfBase::F_.transpose () * sf );
   
   // Compute F_0 - cov_1' inv( sigma_ ) F_
-  MatrixXd temp_1 = F_0 - cov_1.transpose () * sf;
+  MatrixXd temp_1 = F_0 - cov_1 * sf;
   
-  MatrixXd cov = cov_0 - cov_1.transpose () * llt_s.solve ( cov_1 ) + temp_1 * llt_f.solve ( temp_1.transpose () );
+  MatrixXd cov = cov_0 - cov_1 * llt_s.solve ( cov_1.transpose () ); // + temp_1 * llt_f.solve ( temp_1.transpose () );
   
   return cov;
 }

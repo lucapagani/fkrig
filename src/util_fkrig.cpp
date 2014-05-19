@@ -154,7 +154,7 @@ abs_curve_point ( Go::SplineCurve curve,
 
 }
 
-//! Compute the squre of the curve in the parametric point param
+//! Compute the expected value of the absolute value of the curve in the parametric point param
 double
 e_abs_curve_point ( Go::SplineCurve curve,
                     double param,
@@ -174,6 +174,26 @@ e_abs_curve_point ( Go::SplineCurve curve,
   return value;
 }
 
+//! Compute the variance of the absolute value of the curve in the parametric point param
+double
+VarAbsCurvePoint ( Go::SplineCurve curve,
+                   double param,
+                   double sd )
+{
+
+  Go::Point point;
+
+  curve.point ( point, param );
+  double mean = point[0];
+  double ratio = mean / sd;
+
+  normal z;
+
+  double value = std::pow ( mean, 2 ) + std::pow ( sd, 2 ) - std::pow ( sd * std::sqrt ( 2 ) / boost::math::constants::root_pi<double>() * std::exp ( - std::pow ( ratio, 2 ) / 2 ) + mean * ( 1 - 2 * cdf ( z, - ratio ) ), 2 );
+
+  return value;
+}
+
 //! Compute the expected value for the expected improvment
 double
 MeanEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
@@ -183,6 +203,8 @@ MeanEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
 
   // Compute the expected value of the 2d folden normal distribution
   Eigen::Vector2d mu = MeanCurve ( curve_ptr, param, llt_sigma_folded );
+
+//   std::cout << mu << "\n";
 
   // Compute mu_0 - mu_1
   double value = mu ( 0 ) - mu ( 1 );
@@ -237,9 +259,9 @@ MeanCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
   // k1 = k2 = 1
   double mu_1_0 = point_1[0] * cdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 1,0 ) * pdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 1,1 ) * pdf ( z, prod_0 ( 1 ) ) * cdf ( z, prod_0 ( 0 ) );
   // k1 = 1, k2 = -1
-  double mu_1_1 = point_1[0] * cdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_1 ( 1 ) ) * cdf ( z, prod_1 ( 0 ) );
+  double mu_1_1 = - point_1[0] * cdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_1 ( 1 ) ) * cdf ( z, prod_1 ( 0 ) );
   // k1 = -1, k2 = 1
-  double mu_1_2 = - point_1[0] * cdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_2 ( 1 ) ) * cdf ( z, prod_2 ( 0 ) );
+  double mu_1_2 = point_1[0] * cdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_2 ( 1 ) ) * cdf ( z, prod_2 ( 0 ) );
   // k1 = -1, k2 = -1
   double mu_1_3 = - point_1[0] * cdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 1,0 ) * pdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 1,1 ) * pdf ( z, prod_3 ( 1 ) ) * cdf ( z, prod_3 ( 0 ) );
 
@@ -271,6 +293,8 @@ VarianceEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
 
   // Compute the expected value of the 2d folden normal distribution
   Eigen::Vector2d mu = MeanCurve ( curve_ptr, param, llt_sigma_folded );
+
+//   std::cout << mu << "\n";
 
   normal z;
 
@@ -316,19 +340,19 @@ VarianceEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
   Eigen::Vector2d pf_3;
   pf_3 << pdf_3 ( 0 ) * cdf_3 ( 1 ), pdf_3 ( 1 ) * cdf_3 ( 0 );
 
-  // Compute the terms I_k
+  // Compute the terms I_k_i
   Eigen::Matrix2d i_0;
-  i_0 << cdf_0 ( 0 ) * cdf_0 ( 1 ) - prod_0 ( 0 ) * pdf_0 ( 0 ), pdf_0 ( 0 ) * pdf_0 ( 1 ),
-      pdf_0 ( 0 ) * pdf_0 ( 1 ), cdf_0 ( 0 ) * cdf_0 ( 1 ) - prod_0 ( 1 ) * pdf_0 ( 1 );
+  i_0 << cdf_0 ( 1 ) * ( cdf_0 ( 0 ) - prod_0 ( 0 ) * pdf_0 ( 0 ) ), pdf_0 ( 0 ) * pdf_0 ( 1 ),
+      pdf_0 ( 0 ) * pdf_0 ( 1 ), cdf_0 ( 0 ) * ( cdf_0 ( 1 ) - prod_0 ( 1 ) * pdf_0 ( 1 ) );
   Eigen::Matrix2d i_1;
-  i_1 << cdf_1 ( 0 ) * cdf_1 ( 1 ) - prod_1 ( 0 ) * pdf_1 ( 0 ), pdf_1 ( 0 ) * pdf_1 ( 1 ),
-      pdf_1 ( 0 ) * pdf_1 ( 1 ), cdf_1 ( 0 ) * cdf_1 ( 1 ) - prod_1 ( 1 ) * pdf_1 ( 1 );
+  i_1 << cdf_1 ( 1 ) * ( cdf_1 ( 0 ) - prod_1 ( 0 ) * pdf_1 ( 0 ) ), pdf_1 ( 0 ) * pdf_1 ( 1 ),
+      pdf_1 ( 0 ) * pdf_1 ( 1 ), cdf_1 ( 0 ) * ( cdf_1 ( 1 ) - prod_1 ( 1 ) * pdf_1 ( 1 ) );
   Eigen::Matrix2d i_2;
-  i_2 << cdf_2 ( 0 ) * cdf_2 ( 1 ) - prod_2 ( 0 ) * pdf_2 ( 0 ), pdf_2 ( 0 ) * pdf_2 ( 1 ),
-      pdf_2 ( 0 ) * pdf_2 ( 1 ), cdf_2 ( 0 ) * cdf_2 ( 1 ) - prod_2 ( 1 ) * pdf_2 ( 1 );
+  i_2 << cdf_2 ( 1 ) * ( cdf_2 ( 0 ) - prod_2 ( 0 ) * pdf_2 ( 0 ) ), pdf_2 ( 0 ) * pdf_2 ( 1 ),
+      pdf_2 ( 0 ) * pdf_2 ( 1 ), cdf_2 ( 0 ) * ( cdf_2 ( 1 ) - prod_2 ( 1 ) * pdf_2 ( 1 ) );
   Eigen::Matrix2d i_3;
-  i_3 << cdf_3 ( 0 ) * cdf_3 ( 1 ) - prod_3 ( 0 ) * pdf_3 ( 0 ), pdf_3 ( 0 ) * pdf_3 ( 1 ),
-      pdf_3 ( 0 ) * pdf_3 ( 1 ), cdf_3 ( 0 ) * cdf_3 ( 1 ) - prod_3 ( 1 ) * pdf_3 ( 1 );
+  i_3 << cdf_3 ( 1 ) * ( cdf_3 ( 0 ) - prod_3 ( 0 ) * pdf_3 ( 0 ) ), pdf_3 ( 0 ) * pdf_3 ( 1 ),
+      pdf_3 ( 0 ) * pdf_3 ( 1 ), cdf_3 ( 0 ) * ( cdf_3 ( 1 ) - prod_3 ( 1 ) * pdf_3 ( 1 ) );
 
   // Compute the first addend of the covariance matrix
   // k1 = k2 = 1
@@ -369,7 +393,7 @@ VarianceEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
 
   // Compute the variance of the expected improvment
   double variance = cov ( 0, 0 ) + cov ( 1,1 ) - cov ( 0,1 ) - cov ( 1,0 );
-  
+
   return variance;
 
 }
@@ -395,11 +419,11 @@ square_surface_point ( unsigned ndim,
 
 //! Compute the absolute value of the surface in the parametric point param
 int
-abs_surface_point ( unsigned ndim,
-                    const double *x,
-                    void *surface,
-                    unsigned fdim,
-                    double *fval )
+AbsSurfPoint ( unsigned ndim,
+               const double *x,
+               void *surface,
+               unsigned fdim,
+               double *fval )
 {
   Go::SplineSurface * surf = static_cast<Go::SplineSurface*> ( surface );
 
@@ -410,6 +434,292 @@ abs_surface_point ( unsigned ndim,
   fval[0] = std::abs ( point[0] );
 
   return 0; // success
+}
+
+//! Compute the expected value of the absolute value of the curve in the parametric point param
+int
+EAbsSurfPoint ( unsigned ndim,
+                const double *x,
+                void *util_surf,
+                unsigned fdim,
+                double *fval )
+{
+
+  std::pair< shared_ptr<Go::SplineSurface>, double>* util = static_cast< std::pair< shared_ptr<Go::SplineSurface>, double>* > ( util_surf );
+
+  Go::Point point;
+
+  util->first->point ( point, x[0], x[1] );
+
+  double mean = point[0];
+  double ratio = mean / util->second;
+
+  normal z;
+
+  fval[0] = util->second * std::sqrt ( 2 ) / boost::math::constants::root_pi<double>() * std::exp ( - std::pow ( ratio, 2 ) / 2 ) + mean * ( 1 - 2 * cdf ( z, - ratio ) );
+
+  return 0;
+}
+
+//! Compute the variance of the absolute value of the curve in the parametric point param
+int
+VarAbsSurfPoint ( unsigned ndim,
+                  const double *x,
+                  void *util_surf,
+                  unsigned fdim,
+                  double *fval )
+{
+  std::pair< shared_ptr<Go::SplineSurface>, double>* util = static_cast< std::pair< shared_ptr<Go::SplineSurface>, double>* > ( util_surf );
+
+  Go::Point point;
+
+  util->first->point ( point, x[0], x[1] );
+  double mean = point[0];
+  double ratio = mean / util->second;
+
+  normal z;
+
+  fval[0] = std::pow ( mean, 2 ) + std::pow ( util->second, 2 ) - std::pow ( util->second * std::sqrt ( 2 ) / boost::math::constants::root_pi<double>() * std::exp ( - std::pow ( ratio, 2 ) / 2 ) + mean * ( 1 - 2 * cdf ( z, - ratio ) ), 2 );
+
+  return 0;
+
+}
+
+//! Compute the expected value for the expected improvment
+int
+MeanEiSurf ( unsigned ndim,
+             const double *x,
+             void *util_surf,
+             unsigned fdim,
+             double *fval )
+{
+  std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> >* util = static_cast< std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> >* > ( util_surf );
+
+  vector< shared_ptr<Go::SplineSurface> > surf_ptr;
+  surf_ptr.resize ( 2 );
+  ( surf_ptr[0] ).reset ( new Go::SplineSurface );
+  ( surf_ptr[1] ).reset ( new Go::SplineSurface );
+  surf_ptr[0] = util->first[0];
+  surf_ptr[1] = util->first[1];
+
+  Eigen::LLT<MatrixXd> llt;
+  vector<MatrixXd> llt_sigma_folded;
+  llt_sigma_folded.resize ( 2 );
+  llt_sigma_folded[0] = util->second[0];
+  llt_sigma_folded[1] = util->second[1];
+
+  // Compute the expected value of the 2d folden normal distribution
+  Eigen::Vector2d mu = MeanSurf ( surf_ptr, x, llt_sigma_folded );
+
+//   std::cout << mu << "\n";
+
+  // Compute mu_0 - mu_1
+  fval[0] = mu ( 0 ) - mu ( 1 );
+
+  return 0;
+}
+
+//! Compute the expected value of the 2d folded normal distribution
+Eigen::Vector2d
+MeanSurf ( vector< shared_ptr <Go::SplineSurface> > surf_ptr,
+           const double *x,
+           vector<MatrixXd> llt_sigma_folded )
+{
+  // Compute the inverse of llt_sigma_folded
+  MatrixXd inv_llt_sigma_folded_0 = llt_sigma_folded[0].inverse();
+  MatrixXd inv_llt_sigma_folded_1 = llt_sigma_folded[1].inverse();
+
+  // Compute the mean on the param value
+  Go::Point point_0, point_1;
+  surf_ptr[0]->point ( point_0, x[0], x[1] );
+  surf_ptr[1]->point ( point_1, x[0], x[1] );
+
+  // Store values in a vector
+  Eigen::Vector2d mu ( 2 );
+  mu << point_0[0], point_1[0];
+
+  normal z;
+
+  // Compute values of inv_llt_sigma_folded * mu
+  // k1 = k2 = 1
+  Eigen::Vector2d prod_0 = inv_llt_sigma_folded_0 * mu;
+  // k1 = 1, k2 = -1
+  mu ( 1 ) = - mu ( 1 );
+  Eigen::Vector2d prod_1 = inv_llt_sigma_folded_1 * mu;
+  // k1 = k2 = -1
+  mu ( 0 ) = - mu ( 0 );
+  Eigen::Vector2d prod_3 = inv_llt_sigma_folded_0 * mu;
+  // k1 = -1, k2 = 1
+  mu ( 1 ) = - mu ( 1 );
+  Eigen::Vector2d prod_2 = inv_llt_sigma_folded_1 * mu;
+
+  // Compute mean of the first entry of the vector mu
+  // k1 = k2 = 1
+  double mu_0_0 = point_0[0] * cdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 0,0 ) * pdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) );
+  // k1 = 1, k2 = -1
+  double mu_0_1 = point_0[0] * cdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 0,0 ) * pdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) );
+  // k1 = -1, k2 = 1
+  double mu_0_2 = - point_0[0] * cdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 0,0 ) * pdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) );
+  // k1 = -1, k2 = -1
+  double mu_0_3 = - point_0[0] * cdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 0,0 ) * pdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) );
+
+  // k1 = k2 = 1
+  double mu_1_0 = point_1[0] * cdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 1,0 ) * pdf ( z, prod_0 ( 0 ) ) * cdf ( z, prod_0 ( 1 ) ) + llt_sigma_folded[0] ( 1,1 ) * pdf ( z, prod_0 ( 1 ) ) * cdf ( z, prod_0 ( 0 ) );
+  // k1 = 1, k2 = -1
+  double mu_1_1 = - point_1[0] * cdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_1 ( 0 ) ) * cdf ( z, prod_1 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_1 ( 1 ) ) * cdf ( z, prod_1 ( 0 ) );
+  // k1 = -1, k2 = 1
+  double mu_1_2 = point_1[0] * cdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,0 ) * pdf ( z, prod_2 ( 0 ) ) * cdf ( z, prod_2 ( 1 ) ) + llt_sigma_folded[1] ( 1,1 ) * pdf ( z, prod_2 ( 1 ) ) * cdf ( z, prod_2 ( 0 ) );
+  // k1 = -1, k2 = -1
+  double mu_1_3 = - point_1[0] * cdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 1,0 ) * pdf ( z, prod_3 ( 0 ) ) * cdf ( z, prod_3 ( 1 ) ) + llt_sigma_folded[0] ( 1,1 ) * pdf ( z, prod_3 ( 1 ) ) * cdf ( z, prod_3 ( 0 ) );
+
+  // Compute mu
+  Eigen::Vector2d mu_delta;
+  mu_delta << mu_0_0 + mu_0_1 + mu_0_2 + mu_0_3, mu_1_0 + mu_1_1 + mu_1_2 + mu_1_3;
+
+  return mu_delta;
+}
+
+//! Compute the variance for the expected improvment
+int
+VarianceEiSurf ( unsigned ndim,
+                 const double *x,
+                 void *util_surf,
+                 unsigned fdim,
+                 double *fval )
+{
+  std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> >* util = static_cast< std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> >* > ( util_surf );
+
+  vector< shared_ptr<Go::SplineSurface> > surf_ptr;
+  surf_ptr.resize ( 2 );
+  ( surf_ptr[0] ).reset ( new Go::SplineSurface );
+  ( surf_ptr[1] ).reset ( new Go::SplineSurface );
+  surf_ptr[0] = util->first[0];
+  surf_ptr[1] = util->first[1];
+
+  Eigen::LLT<MatrixXd> llt;
+  vector<MatrixXd> llt_sigma_folded;
+  llt_sigma_folded.resize ( 2 );
+  llt_sigma_folded[0] = util->second[0];
+  llt_sigma_folded[1] = util->second[1];
+
+  // Compute the inverse of llt_sigma_folded
+  MatrixXd inv_llt_sigma_folded_0 = llt_sigma_folded[0].inverse();
+  MatrixXd inv_llt_sigma_folded_1 = llt_sigma_folded[1].inverse();
+
+  // Compute the mean on the param value
+  Go::Point point_0, point_1;
+  surf_ptr[0]->point ( point_0, x[0], x[1] );
+  surf_ptr[1]->point ( point_1, x[0], x[1] );
+
+  // Store values in a vector
+  Eigen::Vector2d mu_0 ( 2 );
+  mu_0 << point_0[0], point_1[0];
+
+  // Compute the expected value of the 2d folden normal distribution
+  Eigen::Vector2d mu = MeanSurf ( surf_ptr, x, llt_sigma_folded );
+
+//   std::cout << mu << "\n";
+
+  normal z;
+
+  // Compute values of inv_llt_sigma_folded * mu
+  // k1 = k2 = 1
+  Eigen::Vector2d prod_0 = inv_llt_sigma_folded_0 * mu_0;
+  // k1 = 1, k2 = -1
+  Eigen::Vector2d mu_1;
+  mu_1 << mu_0 ( 0 ),  - mu_0 ( 1 );
+  Eigen::Vector2d prod_1 = inv_llt_sigma_folded_1 * mu_1;
+  // k1 = -1, k2 = 1
+  Eigen::Vector2d mu_2 = - mu_1;
+  Eigen::Vector2d prod_2 = inv_llt_sigma_folded_1 * mu_2;
+  // k1 = k2 = -1
+  Eigen::Vector2d mu_3 = - mu_0;
+  Eigen::Vector2d prod_3 = inv_llt_sigma_folded_0 * mu_3;
+
+  // Compute the vector of pdf and cdf
+  Eigen::Vector2d pdf_0;
+  pdf_0 << pdf ( z, prod_0 ( 0 ) ), pdf ( z, prod_0 ( 1 ) );
+  Eigen::Vector2d pdf_1;
+  pdf_1 << pdf ( z, prod_1 ( 0 ) ), pdf ( z, prod_1 ( 1 ) );
+  Eigen::Vector2d pdf_2;
+  pdf_2 << pdf ( z, prod_2 ( 0 ) ), pdf ( z, prod_2 ( 1 ) );
+  Eigen::Vector2d pdf_3;
+  pdf_3 << pdf ( z, prod_3 ( 0 ) ), pdf ( z, prod_3 ( 1 ) );
+  Eigen::Vector2d cdf_0;
+  cdf_0 << cdf ( z, prod_0 ( 0 ) ), cdf ( z, prod_0 ( 1 ) );
+  Eigen::Vector2d cdf_1;
+  cdf_1 << cdf ( z, prod_1 ( 0 ) ), cdf ( z, prod_1 ( 1 ) );
+  Eigen::Vector2d cdf_2;
+  cdf_2 << cdf ( z, prod_2 ( 0 ) ), cdf ( z, prod_2 ( 1 ) );
+  Eigen::Vector2d cdf_3;
+  cdf_3 << cdf ( z, prod_3 ( 0 ) ), cdf ( z, prod_3 ( 1 ) );
+
+  // Compute the product between the cdf and pdf
+  Eigen::Vector2d pf_0;
+  pf_0 << pdf_0 ( 0 ) * cdf_0 ( 1 ), pdf_0 ( 1 ) * cdf_0 ( 0 );
+  Eigen::Vector2d pf_1;
+  pf_1 << pdf_1 ( 0 ) * cdf_1 ( 1 ), pdf_1 ( 1 ) * cdf_1 ( 0 );
+  Eigen::Vector2d pf_2;
+  pf_2 << pdf_2 ( 0 ) * cdf_2 ( 1 ), pdf_2 ( 1 ) * cdf_2 ( 0 );
+  Eigen::Vector2d pf_3;
+  pf_3 << pdf_3 ( 0 ) * cdf_3 ( 1 ), pdf_3 ( 1 ) * cdf_3 ( 0 );
+
+  // Compute the terms I_k_i
+  Eigen::Matrix2d i_0;
+  i_0 << cdf_0 ( 1 ) * ( cdf_0 ( 0 ) - prod_0 ( 0 ) * pdf_0 ( 0 ) ), pdf_0 ( 0 ) * pdf_0 ( 1 ),
+      pdf_0 ( 0 ) * pdf_0 ( 1 ), cdf_0 ( 0 ) * ( cdf_0 ( 1 ) - prod_0 ( 1 ) * pdf_0 ( 1 ) );
+  Eigen::Matrix2d i_1;
+  i_1 << cdf_1 ( 1 ) * ( cdf_1 ( 0 ) - prod_1 ( 0 ) * pdf_1 ( 0 ) ), pdf_1 ( 0 ) * pdf_1 ( 1 ),
+      pdf_1 ( 0 ) * pdf_1 ( 1 ), cdf_1 ( 0 ) * ( cdf_1 ( 1 ) - prod_1 ( 1 ) * pdf_1 ( 1 ) );
+  Eigen::Matrix2d i_2;
+  i_2 << cdf_2 ( 1 ) * ( cdf_2 ( 0 ) - prod_2 ( 0 ) * pdf_2 ( 0 ) ), pdf_2 ( 0 ) * pdf_2 ( 1 ),
+      pdf_2 ( 0 ) * pdf_2 ( 1 ), cdf_2 ( 0 ) * ( cdf_2 ( 1 ) - prod_2 ( 1 ) * pdf_2 ( 1 ) );
+  Eigen::Matrix2d i_3;
+  i_3 << cdf_3 ( 1 ) * ( cdf_3 ( 0 ) - prod_3 ( 0 ) * pdf_3 ( 0 ) ), pdf_3 ( 0 ) * pdf_3 ( 1 ),
+      pdf_3 ( 0 ) * pdf_3 ( 1 ), cdf_3 ( 0 ) * ( cdf_3 ( 1 ) - prod_3 ( 1 ) * pdf_3 ( 1 ) );
+
+  // Compute the first addend of the covariance matrix
+  // k1 = k2 = 1
+  Eigen::Matrix2d add_0_0 = mu_0 * mu_0.transpose() * cdf_0 ( 0 ) * cdf_0 ( 1 );
+  // k1 = 1, k2 = -1
+  Eigen::Matrix2d add_0_1 = mu_1 * mu_1.transpose() * cdf_1 ( 0 ) * cdf_1 ( 1 );
+  // k1 = -1, k2 = 1
+  Eigen::Matrix2d add_0_2 = mu_2 * mu_2.transpose() * cdf_2 ( 0 ) * cdf_2 ( 1 );
+  // k1 = k2 = -1
+  Eigen::Matrix2d add_0_3 = mu_3 * mu_3.transpose() * cdf_3 ( 0 ) * cdf_3 ( 1 );
+
+  // Compute the second addend of the covariance matrix
+  // k1 = k2 = 1
+  Eigen::Matrix2d add_1_0 = llt_sigma_folded[0] * pf_0 * mu_0.transpose();
+  // k1 = 1, k2 = -1
+  Eigen::Matrix2d add_1_1 = llt_sigma_folded[1] * pf_1 * mu_1.transpose();
+  // k1 = -1, k2 = 1
+  Eigen::Matrix2d add_1_2 = llt_sigma_folded[1] * pf_2 * mu_2.transpose();
+  // k1 = k2 = -1
+  Eigen::Matrix2d add_1_3 = llt_sigma_folded[0] * pf_3 * mu_3.transpose();
+
+  // Compute the forth addend of the covariance matrix
+  // k1 = k2 = 1
+  Eigen::Matrix2d add_3_0 = llt_sigma_folded[0] * i_0 * llt_sigma_folded[0].transpose();
+  // k1 = 1, k2 = -1
+  Eigen::Matrix2d add_3_1 = llt_sigma_folded[1] * i_1 * llt_sigma_folded[1].transpose();
+  // k1 = -1, k2 = 1
+  Eigen::Matrix2d add_3_2 = llt_sigma_folded[1] * i_2 * llt_sigma_folded[1].transpose();
+  // k1 = k2 = -1
+  Eigen::Matrix2d add_3_3 = llt_sigma_folded[0] * i_3 * llt_sigma_folded[0].transpose();
+
+  // Compute the covariance matrix
+  Eigen::Matrix2d cov = add_0_0 + add_1_0 + add_1_0.transpose() + add_3_0 +
+                        add_0_1 + add_1_1 + add_1_1.transpose() + add_3_1 +
+                        add_0_2 + add_1_2 + add_1_2.transpose() + add_3_2 +
+                        add_0_3 + add_1_3 + add_1_3.transpose() + add_3_3 -
+                        mu * mu.transpose();
+
+  // Compute the variance of the expected improvment
+  fval[0] = cov ( 0, 0 ) + cov ( 1,1 ) - cov ( 0,1 ) - cov ( 1,0 );
+
+  return 0;
+
 }
 
 //! Objective function for the maximization of the expected improvment
@@ -423,21 +733,93 @@ ObjectiveFunction ( const vector<double> &x,
 
 //   MatrixXd coord_ego;
 
-  MatrixXd coord_ego = ego->get_coord ();
+//   MatrixXd coord_ego = ego->get_coord ();
+//
+//   // Fill the row of the second point
+//   for ( size_t i = 0; i < x.size (); ++i )
+//     coord_ego ( 1,i ) = x[i];
+
+  RVectorXd coord_ego ( x.size() );
 
   // Fill the row of the second point
   for ( size_t i = 0; i < x.size (); ++i )
-    coord_ego ( 1,i ) = x[i];
+    coord_ego ( i ) = x[i];
 
   // Compute mean and variance of random variable
   double mean = ego->ComputeMean ( coord_ego );
   double sigma = std::sqrt ( ego->ComputeVariance ( coord_ego ) );
-  double ratio = mean / sigma;
 
-  // Compute the value of the expected improvment
-  double value = sigma * boost::math::pdf ( ego->z_, ratio ) + mean * boost::math::cdf ( ego->z_, ratio );
+  double value = 0.;
+
+  if ( sigma > 1e-16 ) {
+    double ratio = mean / sigma;
+
+    // Compute the value of the expected improvment
+    value = sigma * boost::math::pdf ( ego->z_, ratio ) + mean * boost::math::cdf ( ego->z_, ratio );
+
+  } else {
+    value = std::max ( mean, 0. );
+  }
 
   return value;
+}
+
+//! Objective function for the minization of the distance between the predicted function and the nominal function
+double
+ObjectiveFunctionMinCurve ( const vector<double> &x,
+                            vector<double> &grad,
+                            void* ego_obj )
+{
+
+  fkrig::EgoCurve* ego = reinterpret_cast<fkrig::EgoCurve*> ( ego_obj );
+
+  RVectorXd coord ( x.size() );
+
+  // Fill the row of the second point
+  for ( size_t i = 0; i < x.size (); ++i )
+    coord ( i ) = x[i];
+
+  // Obtain fkrig object
+  shared_ptr<CurveBase> fkrig = ego->get_fkrig();
+
+  // Predict the curve
+  Go::SplineCurve curve = fkrig->Predict ( coord );
+
+  // Compute mean and variance of random variable
+  double mean = ego->ComputeL1Mean ( curve, coord );
+//   double mean = ego->ComputeL1 ( curve );
+
+  return mean;
+
+}
+
+//! Objective function for the minization of the distance between the predicted function and the nominal function
+double
+ObjectiveFunctionMinSurf ( const vector<double> &x,
+                           vector<double> &grad,
+                           void* ego_obj )
+{
+
+  fkrig::EgoSurf* ego = reinterpret_cast<fkrig::EgoSurf*> ( ego_obj );
+
+  RVectorXd coord ( x.size() );
+
+  // Fill the row of the second point
+  for ( size_t i = 0; i < x.size (); ++i )
+    coord ( i ) = x[i];
+
+  // Obtain fkrig object
+  shared_ptr<SurfBase> fkrig = ego->get_fkrig();
+
+  // Predict the curve
+  Go::SplineSurface curve = fkrig->Predict ( coord );
+
+  // Compute mean and variance of random variable
+  double mean = ego->ComputeL1Mean ( curve, coord );
+//   double mean = ego->ComputeL1 ( curve );
+
+  return mean;
+
 }
 
 // struct covariance_residual_mater_5_2_fix_nugget {

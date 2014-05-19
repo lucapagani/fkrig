@@ -68,7 +68,66 @@ public:
    */
   virtual double
   ComputeL1Mean ( Go::SplineCurve& curve,
-                  MatrixXd coord ) const = 0 ;
+                  MatrixXd coord ) const = 0;
+
+  /*! @brief Compute the L1 distance to the nominal funciton
+   *
+   *  Compute the L1 distance between the prediction of the i-th observed curve (surface) and the nominal curve (surface)
+   *
+   *  @param curve spline curve
+   */
+  virtual double
+  ComputeL1 ( Go::SplineSurface& curve ) const = 0;
+
+  /*! @brief Compute the expected value of the L1 distance to the nominal funciton
+   *
+   *  Compute the L1 distance of the expected value between the prediction of the curve (surface) at the geometric coordinate coord and the nominal curve (surface)
+   *
+   *  @param curve spline curve
+   */
+  virtual double
+  ComputeL1Mean ( Go::SplineSurface& curve,
+                  MatrixXd coord ) const = 0;
+
+//   double
+//   ComputeL1 ( Go::SplineCurve& curve ) const {
+//     return 0.;
+//   };
+// 
+//   /*! @brief Compute the expected value of the L1 distance to the nominal funciton
+//    *
+//    *  Compute the L1 distance of the expected value between the prediction of the curve (surface) at the geometric coordinate coord and the nominal curve (surface)
+//    *
+//    *  @param curve spline curve
+//    */
+//   double
+//   ComputeL1Mean ( Go::SplineCurve& curve,
+//                   MatrixXd coord ) const {
+//     return 0.;
+//   };
+// 
+//   /*! @brief Compute the L1 distance to the nominal funciton
+//    *
+//    *  Compute the L1 distance between the prediction of the i-th observed curve (surface) and the nominal curve (surface)
+//    *
+//    *  @param curve spline curve
+//    */
+//   double
+//   ComputeL1 ( Go::SplineSurface& surf ) const {
+//     return 0.;
+//   }
+// 
+//   /*! @brief Compute the expected value of the L1 distance to the nominal funciton
+//    *
+//    *  Compute the L1 distance of the expected value between the prediction of the curve (surface) at the geometric coordinate coord and the nominal curve (surface)
+//    *
+//    *  @param curve spline curve
+//    */
+//   double
+//   ComputeL1Mean ( Go::SplineSurface& surf,
+//                   MatrixXd coord ) const {
+//     return 0.;
+//   };
 
   /*! @brief Compute the L1 distance to the nominal funciton
    *
@@ -112,23 +171,63 @@ public:
    */
   virtual double
   ComputeVariance ( RVectorXd coord ) const = 0;
-  
+
+  //! Find the design coordinate that minimize the distance between the predicted curve (surface) and the nominal curve (surface)
+  virtual void
+  ComputeMinDist () = 0;
+
   //! Return the index of the closest curve (surface) to the nominal curve (surface)
   size_t
-  get_index_min () {
+  get_index_min () const {
     return index_min_;
-  };  
+  };
 
   //! Return the coordinate of the maximum of the expected improvment
   RVectorXd
-  get_max_ei () {
+  get_max_ei () const {
     return ei_max_;
   };
 
   //! Return the coord_ego_ matrix
   MatrixXd
-  get_coord () {
+  get_coord () const {
     return coord_ego_;
+  };
+
+  //! Retrun the result of the optimization
+  nlopt::result
+  get_result () const {
+    return result_;
+  };
+
+  //! Retrun the value of the optimization
+  double
+  get_value () const {
+    return value_;
+  };
+
+  //! Return the new point
+  vector<double>
+  get_new_point () const {
+    return x_max_;
+  };
+
+  //! Retrun the result of the optimization (minimum distance)
+  nlopt::result
+  get_result_min () const {
+    return result_min_;
+  };
+
+  //! Retrun the value of the optimization (minimum distance)
+  double
+  get_value_min () const {
+    return value_min_;
+  };
+
+  //! Return the design point (minimum distance)
+  vector<double>
+  get_point_min () const {
+    return x_min_;
   };
 
   //! Standard normal distribution
@@ -162,16 +261,24 @@ protected:
   RVectorXd ei_max_;
   //! Object for the non linear optimization
   nlopt::opt opt_;
-  //! Optimum value in the geometrical space with the global optimization algorithm
+  //! Result of the global optimization algorithm
   nlopt::result result_;
 //   //! Optimum value in the geometrical space with the local optimization algorithm
 //   nlopt::result result_loc_;
   //! Optimum value of the objective function with the global optimization algorithm
   double value_;
+  //! Optimum value in the design space with the global optimization algorithm
+  vector<double> x_max_;
 //   //! Optimum value of the objective function with the local optimization algorithm
 //   double value_local_;
   //! Matrix with the coordinates of the minimum (first row) and a new point (second row)
   MatrixXd coord_ego_;
+  //! Optimum value of the objective function with the global optimization algorithm
+  //! Result of the global optimization algorithm
+  nlopt::result result_min_;
+  double value_min_;
+  //! Optimum value in the design space with the global optimization algorithm
+  vector<double> x_min_;
 
 };
 

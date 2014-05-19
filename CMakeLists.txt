@@ -11,7 +11,7 @@ include_directories(/usr/local/include/mba)
 
 include_directories(./include)
 
-add_library( fkrig ./src/util_fkrig.cpp ./src/covariance.cpp ./src/curve_base.cpp ./src/curve.cpp ./src/surface_base.cpp ./src/surface.cpp ./src/ego_base.cpp ./src/ego_curve.cpp )
+add_library( fkrig ./src/util_fkrig.cpp ./src/covariance.cpp ./src/curve_base.cpp ./src/curve.cpp ./src/surface_base.cpp ./src/surface.cpp ./src/ego_base.cpp ./src/ego_curve.cpp ./src/ego_surface.cpp )
 
 # target_link_libraries(fkrig ${CERES_LIBRARIES})
 

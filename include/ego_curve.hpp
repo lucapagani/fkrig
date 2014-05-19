@@ -51,6 +51,17 @@ public:
   double
   ComputeL1 ( Go::SplineCurve& curve ) const;
 
+  /*! @brief Compute the L1 distance to the nominal funciton
+   *
+   *  Compute the L1 distance between the prediction of the curve at the geometric coordinate coord and the nominal curve
+   *
+   *  @param curve spline surface
+   */
+  double
+  ComputeL1 ( Go::SplineSurface& surf ) const {
+    return 0.;
+  };
+
   /*! @brief Compute the expected value of the L1 distance to the nominal funciton
    *
    *  Compute the L1 distance of the expected value between the prediction of the curve at the geometric coordinate coord and the nominal curve
@@ -60,6 +71,18 @@ public:
   double
   ComputeL1Mean ( Go::SplineCurve& curve,
                   MatrixXd coord ) const;
+
+  /*! @brief Compute the expected value of the L1 distance to the nominal funciton
+   *
+   *  Compute the L1 distance of the expected value between the prediction of the curve at the geometric coordinate coord and the nominal curve
+   *
+   *  @param curve spline surface
+   */
+  double
+  ComputeL1Mean ( Go::SplineSurface& surf,
+                  MatrixXd coord ) const {
+    return 0.;
+  };
 
   /*! @brief Compute the L1 distance to the nominal funciton
    *
@@ -88,6 +111,16 @@ public:
    */
   double
   ComputeFunction ( RVectorXd coord );
+
+  //! Find the design coordinate that minimize the distance between the predicted curve and the nominal curve
+  void
+  ComputeMinDist ();
+
+  //! Return fkrig object
+  std::shared_ptr<CurveBase>
+  get_fkrig () const {
+    return f_curve_;
+  };
 
 //   /*! Objective function for the maximization of the expected improvment
 //    *
