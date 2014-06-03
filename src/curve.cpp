@@ -45,7 +45,11 @@ fkrig::Curve::Curve ( vector< vector<double> >& points,
                       model_type model,
                       double n_max,
                       double tol )
-  : CurveBase ( points, param, dim, coord, model, n_max, tol ) {}
+  : CurveBase ( points, param, dim, coord, model, n_max, tol ) {
+    
+    CurveBase::f_curve_ = NULL;
+    
+  }
 
 // // Interpolate the iput data
 // void
@@ -534,7 +538,7 @@ fkrig::Curve::ComputeSqPairwiseDistances ()
 //       curve = Go::GeometryTools::curveSum ( *( CurveBase::curve_ptr_[j] ), -1, *curve, 1 );
       
       // Fill the vector of the differeces between the observed spline and the mean terms
-      value = fkrig::adaptiveSimpsons ( fkrig::square_curve_point, curve, CurveBase::range_points_.first, CurveBase::range_points_.second, 1e-6, 10 );
+      value = fkrig::AdaptiveSimpsons ( fkrig::SquareCurvePoint, curve, CurveBase::range_points_.first, CurveBase::range_points_.second, 1e-6, 10 );
       CurveBase::par_sq_dist_[it] = value;
     }
 

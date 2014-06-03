@@ -211,14 +211,32 @@ private:
   const double y_;
 };
 
+// //! Functor with MATERN_5_2 if fix_nugget is false
+// struct covariance_residual_matern_5_2 {
+//   covariance_residual_matern_5_2 ( double x, double y )
+//     : x_ ( x ), y_ ( y ) {}
+// 
+//   template <typename T>
+//   bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const nugget, T* residual ) const {
+//     x_ > 0. ? residual[0] = T ( y_ ) - nugget [0] - exp ( lsigma_sq[0] ) * ( 1. - ( 1. + x_ / exp ( lphi[0] ) + pow ( x_ / exp ( lphi[0] ), 2 ) / 3. ) * exp ( - x_ / exp ( lphi[0] ) ) ) : residual[0] = T ( y_ ) - nugget [0];
+// //     x_ > 0. ? residual[0] = T ( y_ ) - nugget[0] - sigma_sq[0] * ( 1. - ( 1. + sqrt ( 5. ) * x_ / exp ( lphi[0] ) + 5. / 3. * pow ( x_ / exp ( lphi[0] ), 2 ) ) * exp ( - sqrt ( 5. ) * x_ / exp ( lphi[0] ) ) ) : residual[0] = T ( y_ ) - nugget;
+//     return true;
+//   }
+// 
+// private:
+//   // Observations for a sample.
+//   const double x_;
+//   const double y_;
+// };
+
 //! Functor with MATERN_5_2 if fix_nugget is false
 struct covariance_residual_matern_5_2 {
   covariance_residual_matern_5_2 ( double x, double y )
     : x_ ( x ), y_ ( y ) {}
 
   template <typename T>
-  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const nugget, T* residual ) const {
-    x_ > 0. ? residual[0] = T ( y_ ) - nugget [0] - exp ( lsigma_sq[0] ) * ( 1. - ( 1. + x_ / exp ( lphi[0] ) + pow ( x_ / exp ( lphi[0] ), 2 ) / 3. ) * exp ( - x_ / exp ( lphi[0] ) ) ) : residual[0] = T ( y_ ) - nugget [0];
+  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const lnugget, T* residual ) const {
+    x_ > 0. ? residual[0] = T ( y_ ) - exp ( lnugget [0] ) - exp ( lsigma_sq[0] ) * ( 1. - ( 1. + x_ / exp ( lphi[0] ) + pow ( x_ / exp ( lphi[0] ), 2 ) / 3. ) * exp ( - x_ / exp ( lphi[0] ) ) ) : residual[0] = T ( y_ ) - exp ( lnugget [0] );
 //     x_ > 0. ? residual[0] = T ( y_ ) - nugget[0] - sigma_sq[0] * ( 1. - ( 1. + sqrt ( 5. ) * x_ / exp ( lphi[0] ) + 5. / 3. * pow ( x_ / exp ( lphi[0] ), 2 ) ) * exp ( - sqrt ( 5. ) * x_ / exp ( lphi[0] ) ) ) : residual[0] = T ( y_ ) - nugget;
     return true;
   }
@@ -253,8 +271,8 @@ struct covariance_residual_matern_3_2 {
     : x_ ( x ), y_ ( y ) {}
 
   template <typename T>
-  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const nugget, T* residual ) const {
-    x_ > 0. ? residual[0] = T ( y_ ) - nugget[0] - exp ( lsigma_sq[0] ) * ( 1. - ( 1. +  x_ / exp ( lphi[0] ) ) * exp ( - x_ / exp ( lphi[0] ) ) ) : residual[0] = T ( y_ ) - nugget[0];
+  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const lnugget, T* residual ) const {
+    x_ > 0. ? residual[0] = T ( y_ ) - exp ( lnugget[0] ) - exp ( lsigma_sq[0] ) * ( 1. - ( 1. +  x_ / exp ( lphi[0] ) ) * exp ( - x_ / exp ( lphi[0] ) ) ) : residual[0] = T ( y_ ) - exp ( lnugget[0] );
 //     x_ > 0. ? residual[0] = T ( y_ ) - nugget - sigma_sq[0] * ( 1. - ( 1. + sqrt ( 3. ) * x_ / phi[0] ) * exp ( - sqrt ( 3. ) * x_ / phi[0] ) ) : residual[0] = T ( y_ ) - nugget ;
     return true;
   }
@@ -288,8 +306,8 @@ struct covariance_residual_pow_exp {
     : x_ ( x ), y_ ( y ) {}
 
   template <typename T>
-  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const tkappa, const T* const nugget, T* residual ) const {
-    residual[0] = T ( y_ ) - nugget[0] - exp ( lsigma_sq[0] ) * ( 1. - exp ( - pow ( x_ / exp ( lphi[0] ), 2. * exp ( tkappa[0] ) / ( 1. + exp ( tkappa[0] ) ) ) ) );
+  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const tkappa, const T* const lnugget, T* residual ) const {
+    residual[0] = T ( y_ ) - exp ( lnugget[0] ) - exp ( lsigma_sq[0] ) * ( 1. - exp ( - pow ( x_ / exp ( lphi[0] ), 2. * exp ( tkappa[0] ) / ( 1. + exp ( tkappa[0] ) ) ) ) );
     return true;
   }
 
@@ -322,8 +340,8 @@ struct covariance_residual_exp {
     : x_ ( x ), y_ ( y ) {}
 
   template <typename T>
-  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const nugget, T* residual ) const {
-    residual[0] = T ( y_ ) - nugget[0] - exp ( lsigma_sq[0] ) * ( 1. - exp ( - x_ / exp ( lphi[0] ) ) );
+  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const lnugget, T* residual ) const {
+    residual[0] = T ( y_ ) - exp ( lnugget[0] ) - exp ( lsigma_sq[0] ) * ( 1. - exp ( - x_ / exp ( lphi[0] ) ) );
     return true;
   }
 
@@ -356,8 +374,8 @@ struct covariance_residual_gauss {
     : x_ ( x ), y_ ( y ) {}
 
   template <typename T>
-  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const nugget, T* residual ) const {
-    residual[0] = T ( y_ ) - nugget[0] - exp ( lsigma_sq[0] ) * ( 1. - exp ( - pow ( x_ / exp ( lphi[0] ), 2 ) ) );
+  bool operator() ( const T* const lsigma_sq, const T* const lphi, const T* const lnugget, T* residual ) const {
+    residual[0] = T ( y_ ) - exp ( lnugget[0] ) - exp ( lsigma_sq[0] ) * ( 1. - exp ( - pow ( x_ / exp ( lphi[0] ), 2 ) ) );
     return true;
   }
 
@@ -379,7 +397,7 @@ fkrig::Covariance::Estimate ( VectorXd& u,
   vector<double> init_sigma_sq = { v.maxCoeff () / 2., v.maxCoeff () * 3. / 4., v.maxCoeff () };
   vector<double> init_phi = { .4 / 5. * u.maxCoeff (), .8 / 5. * u.maxCoeff (), 1.6 / 5. * u.maxCoeff (), 2.4 / 5. * u.maxCoeff (), 3.2 / 5. * u.maxCoeff (), .8 * u.maxCoeff () };
 
-  double lsigma_sq = 0., lphi = 0.;
+  double lsigma_sq = 0., lphi = 0., lnugget = 0.;
 
   // Compute the value of the obliective function on a grid
   if ( fix_nugget_ == true ) {
@@ -431,7 +449,7 @@ fkrig::Covariance::Estimate ( VectorXd& u,
 
     lsigma_sq = log ( init_sigma_sq[index_i] );
     lphi = log ( init_phi[index_j] );
-    nugget_ = init_nugget[index_k];
+    lnugget = log ( init_nugget[index_k] );
 
   }
 
@@ -497,13 +515,13 @@ fkrig::Covariance::Estimate ( VectorXd& u,
     switch ( type_ ) {
     case 0: {
       for ( size_t i = 0; i < u.rows(); ++i )
-        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_matern_5_2, 1, 1, 1, 1> ( new covariance_residual_matern_5_2 ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &nugget_ );
-
+        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_matern_5_2, 1, 1, 1, 1> ( new covariance_residual_matern_5_2 ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &lnugget );
+      
       break;
     }
     case 1: {
       for ( size_t i = 0; i < u.rows(); ++i )
-        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_matern_3_2, 1, 1, 1, 1> ( new covariance_residual_matern_3_2 ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &nugget_ );
+        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_matern_3_2, 1, 1, 1, 1> ( new covariance_residual_matern_3_2 ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &lnugget );
 
       break;
     }
@@ -512,7 +530,7 @@ fkrig::Covariance::Estimate ( VectorXd& u,
       double tkappa = log ( 2 / ( 2 - 1.5 ) );
 
       for ( size_t i = 0; i < u.rows(); ++i )
-        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_pow_exp, 1, 1, 1, 1, 1> ( new covariance_residual_pow_exp ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &tkappa, &nugget_ );
+        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_pow_exp, 1, 1, 1, 1, 1> ( new covariance_residual_pow_exp ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &tkappa, &lnugget );
 
       // Set value of kappa_
       kappa_ = 2 * exp ( tkappa ) / ( 1 + exp ( tkappa ) );
@@ -521,13 +539,13 @@ fkrig::Covariance::Estimate ( VectorXd& u,
     }
     case 3: {
       for ( size_t i = 0; i < u.rows(); ++i )
-        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_exp, 1, 1, 1, 1> ( new covariance_residual_exp ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &nugget_ );
+        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_exp, 1, 1, 1, 1> ( new covariance_residual_exp ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &lnugget );
 
       break;
     }
     case 4 : {
       for ( size_t i = 0; i < u.rows(); ++i )
-        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_gauss, 1, 1, 1, 1> ( new covariance_residual_gauss ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &nugget_ );
+        problem.AddResidualBlock ( new ceres::AutoDiffCostFunction<covariance_residual_gauss, 1, 1, 1, 1> ( new covariance_residual_gauss ( u[i], v[i] ) ), NULL, &lsigma_sq, &lphi, &lnugget );
 
       break;
     }
@@ -541,6 +559,9 @@ fkrig::Covariance::Estimate ( VectorXd& u,
   // Save the parameters find
   sigma_sq_ = exp ( lsigma_sq );
   phi_ = exp ( lphi );
+  
+  if ( fix_nugget_ == false )
+    nugget_ = exp ( lnugget );
 
   // Compute the correlation and covariance matrix
   fkrig::Covariance::Eval ( u );

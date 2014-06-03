@@ -14,7 +14,7 @@ fkrig::SurfBase::SurfBase ( vector< vector<double> >& points,
                             model_type model,
                             double n_max,
                             double tol )
-  : points_ ( points ), param_u_ ( param_u ), param_v_ ( param_v ), dim_ ( dim ), coord_ ( coord ), model_ ( model ), n_max_ ( n_max ), tol_ ( tol )
+  : points_ ( points ), param_u_ ( param_u ), param_v_ ( param_v ), dim_ ( dim ), coord_ ( coord ), model_ ( model ), n_max_ ( n_max ), tol_ ( tol ), polygon_ ()
 {
 
   surf_ptr_.resize ( points_.size() );
@@ -109,6 +109,15 @@ fkrig::SurfBase::set_covaraince ( std::unique_ptr<fkrig::Covariance> cov )
 {
 
   *cov_ = *cov;
+
+};
+
+//! Set the polygonal boundary
+void
+fkrig::SurfBase::set_polygon ( vector<Point> polygon )
+{
+
+  polygon_ = polygon;
 
 };
 
@@ -663,23 +672,27 @@ fkrig::SurfBase::ComputeMba ( vector<double> points,
   return sisl_surf;
 }
 
-//! Check if a point is on the polygon
-bool
-fkrig::SurfBase::Pnpoly ( double u,
-                          double v )
+
+//! Return the area of the parametric space
+double
+fkrig::SurfBase::get_domain_range () const
 {
 
-  bool in_poly = false;
+  double value = 0.;
 
-  for ( size_t i = 0, j = polygon_.size() - 1; i < polygon_.size(); j = i++ ) {
-    if ( ( ( polygon_[i].v >= v ) != ( polygon_[j].v >= v ) ) && ( u <= ( polygon_[j].u - polygon_[i].u ) * ( v - polygon_[i].v ) / ( polygon_[j].v - polygon_[i].v ) + polygon_[i].u ) )
-      in_poly = !in_poly;
+  if ( polygon_.empty() ) {
+    value = ( range_points_u_.second - range_points_u_.first ) * ( range_points_v_.second - range_points_v_.first );
+  } else {
+    //  Public-domain function by Darel Rex Finley, 2006
+    size_t j = polygon_.size () - 1;
+    for ( size_t i = 0; i < polygon_.size (); ++i ) {
+      value += ( polygon_[j].u + polygon_[i].u ) * ( polygon_[j].v - polygon_[i].v );
+      j = i;
+    }
+    value *= -.5;
   }
 
-  return in_poly;
-
-}
+  return value;
+};
 
 } // end of namespace
-
-

@@ -19,7 +19,13 @@ public:
 
   /*! Constructor with implicit parameterization (only if the dimension of the geometric space is 2)
    * 
-   * @todo all
+   *  @param points vector of vector of points
+   *  @param dim dimension of the curve
+   *  @param coord matrix of design coordinates
+   *  @param model type of model matrix
+   *  @param n_max number of maximum iteration of the algorithm
+   *  @param tol tollerance of the alforithm
+   *  @todo all
    */
   Curve ( vector< vector<double> >& points,
           const int dim,

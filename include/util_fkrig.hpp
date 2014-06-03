@@ -14,7 +14,7 @@ namespace fkrig {
 
 //! Recursive auxiliary function for adaptiveSimpsons() function below
 double
-adaptiveSimpsonsAux ( double ( *f ) ( Go::SplineCurve, double ),
+AdaptiveSimpsonsAux ( double ( *f ) ( Go::SplineCurve, double ),
                       Go::SplineCurve curve,
                       double a,
                       double b,
@@ -27,7 +27,7 @@ adaptiveSimpsonsAux ( double ( *f ) ( Go::SplineCurve, double ),
 
 //! Adaptive Simpson's Rule
 double
-adaptiveSimpsons ( double ( *f ) ( Go::SplineCurve, double ),
+AdaptiveSimpsons ( double ( *f ) ( Go::SplineCurve, double ),
                    Go::SplineCurve curve,
                    double a, double b,
                    double epsilon,
@@ -36,7 +36,7 @@ adaptiveSimpsons ( double ( *f ) ( Go::SplineCurve, double ),
 
 //! Recursive auxiliary function for adaptiveSimpsons() function below
 double
-adaptiveSimpsonsAux ( double ( *f ) ( Go::SplineCurve, double, double ),
+AdaptiveSimpsonsAux ( double ( *f ) ( Go::SplineCurve, double, double ),
                       Go::SplineCurve curve,
                       double sd,
                       double a,
@@ -50,7 +50,7 @@ adaptiveSimpsonsAux ( double ( *f ) ( Go::SplineCurve, double, double ),
 
 //! Adaptive Simpson's Rule
 double
-adaptiveSimpsons ( double ( *f ) ( Go::SplineCurve, double, double ),
+AdaptiveSimpsons ( double ( *f ) ( Go::SplineCurve, double, double ),
                    Go::SplineCurve curve,
                    double sd,
                    double a, double b,
@@ -59,7 +59,7 @@ adaptiveSimpsons ( double ( *f ) ( Go::SplineCurve, double, double ),
 
 //! Recursive auxiliary function for adaptiveSimpsons() function below
 double
-adaptiveSimpsonsAux ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, double, vector<MatrixXd> ),
+AdaptiveSimpsonsAux ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, double, vector<MatrixXd> ),
                       vector< shared_ptr< Go::SplineCurve > > curve,
                       vector<MatrixXd> llt_sigma_folded,
                       double a,
@@ -73,7 +73,7 @@ adaptiveSimpsonsAux ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, d
 
 //! Adaptive Simpson's Rule
 double
-adaptiveSimpsons ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, double, vector<MatrixXd> ),
+AdaptiveSimpsons ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, double, vector<MatrixXd> ),
                    vector< shared_ptr< Go::SplineCurve > > curve,
                    vector<MatrixXd> llt_sigma_folded,
                    double a, double b,
@@ -82,19 +82,19 @@ adaptiveSimpsons ( double ( *f ) ( vector< shared_ptr< Go::SplineCurve > >, doub
 
 //! Compute the squre of the curve in the parametric point param
 double
-square_curve_point ( Go::SplineCurve curve,
-                     double param );
+SquareCurvePoint ( Go::SplineCurve curve,
+                   double param );
 
 //! Compute the absolute value of the curve in the parametric point param
 double
-abs_curve_point ( Go::SplineCurve curve,
-                  double param );
+AbsCurvePoint ( Go::SplineCurve curve,
+                double param );
 
 //! Compute the expected value of the absolute value of the curve in the parametric point param
 double
-e_abs_curve_point ( Go::SplineCurve curve,
-                    double param,
-                    double sd );
+EAbsCurvePoint ( Go::SplineCurve curve,
+                 double param,
+                 double sd );
 
 //! Compute the variance of the absolute value of the curve in the parametric point param
 double
@@ -122,11 +122,11 @@ VarianceEiCurve ( vector< shared_ptr <Go::SplineCurve> > curve_ptr,
 
 //! Compute the square of the surface in the parametric point param
 int
-square_surface_point ( unsigned ndim,
-                       const double *x,
-                       void *surface,
-                       unsigned fdim,
-                       double *fval );
+SquareSurfacePoint ( unsigned ndim,
+                     const double *x,
+                     void *surface,
+                     unsigned fdim,
+                     double *fval );
 
 //! Compute the absolute value of the surface in the parametric point param
 int
@@ -174,6 +174,54 @@ VarianceEiSurf ( unsigned ndim,
                  unsigned fdim,
                  double *fval );
 
+//! Compute the square of the surface in the parametric point param if there is a polygonal boundary
+int
+SquareSurfacePointPoly ( unsigned ndim,
+                         const double *x,
+                         void *util,
+                         unsigned fdim,
+                         double *fval );
+
+//! Compute the absolute value of the surface in the parametric point param if there is a polygonal boundary
+int
+AbsSurfPointPoly ( unsigned ndim,
+                   const double *x,
+                   void *util,
+                   unsigned fdim,
+                   double *fval );
+
+//! Compute the expected value of the absolute value of the surface in the parametric point param if there is a polygonal boundary
+int
+EAbsSurfPointPoly ( unsigned ndim,
+                    const double *x,
+                    void *util_surf,
+                    unsigned fdim,
+                    double *fval );
+
+//! Compute the variance of the absolute value of the curve in the parametric point param
+int
+VarAbsSurfPointPoly ( unsigned ndim,
+                      const double *x,
+                      void *util_surf,
+                      unsigned fdim,
+                      double *fval );
+
+//! Compute the expected value for the expected improvment if there is a polygonal boundary
+int
+MeanEiSurfPoly ( unsigned ndim,
+                 const double *x,
+                 void *util_surf,
+                 unsigned fdim,
+                 double *fval );
+
+//! Compute the variance for the expected improvment if there is a polygonal boundary
+int
+VarianceEiSurfPoly ( unsigned ndim,
+                     const double *x,
+                     void *util_surf,
+                     unsigned fdim,
+                     double *fval );
+
 /*! Objective function for the maximization of the expected improvment
  *
  *  @param x value of the coordinates in the disegn space
@@ -206,6 +254,17 @@ double
 ObjectiveFunctionMinSurf ( const vector<double> &x,
                            vector<double> &grad,
                            void* ego_obj );
+
+/*! Check if a point is on the polygon (the point is inside the polygon if it is on the border)
+ *
+ *  @param u value of the u parameter
+ *  @param v value of the v parameter
+ *  @param polygon boundary polygon, the point are in anticlockwise order
+ */
+bool
+PnPoly ( double u,
+         double v,
+         vector<Point> polygon );
 
 // // struct covariance_residual_mater_5_2_fix_nugget { double x_; double y_; };
 // struct covariance_residual_mater_5_2_fix_nugget {

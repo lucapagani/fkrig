@@ -2,7 +2,7 @@
 #define H_EGO__
 
 #include "surface.hpp"
-// #include "curve.hpp"
+#include "curve.hpp"
 #include <nlopt.hpp>
 #include <boost/math/distributions/normal.hpp> // for normal_distribution
 
@@ -271,7 +271,7 @@ protected:
   vector<double> x_max_;
 //   //! Optimum value of the objective function with the local optimization algorithm
 //   double value_local_;
-  //! Matrix with the coordinates of the minimum (first row) and a new point (second row)
+  //! Matrix with the coordinates of the minimum
   MatrixXd coord_ego_;
   //! Optimum value of the objective function with the global optimization algorithm
   //! Result of the global optimization algorithm
@@ -279,7 +279,6 @@ protected:
   double value_min_;
   //! Optimum value in the design space with the global optimization algorithm
   vector<double> x_min_;
-
 };
 
 } // End of namespace

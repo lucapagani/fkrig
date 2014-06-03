@@ -3,6 +3,7 @@
 
 #include "ego_base.hpp"
 #include "curve.hpp"
+#include "curve_link.hpp"
 
 typedef Eigen::Matrix<double, 1, Eigen::Dynamic> RVectorXd;
 

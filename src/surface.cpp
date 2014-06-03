@@ -184,7 +184,7 @@ fkrig::Surf::Predict ( RVectorXd& coord ) const
   coefs.resize ( sx_coefs.cols() );
 
   for ( size_t i = 0; i < sx_coefs.cols(); ++i )
-      coefs[i] = sx_coefs ( i ) + dx_coefs ( i );
+    coefs[i] = sx_coefs ( i ) + dx_coefs ( i );
 
   // Compute the predicted surfaces
   Go::SplineSurface pred;
@@ -275,21 +275,21 @@ fkrig::Surf::PredictCovariance ( MatrixXd& coord ) const
 
   // Compute the matrix of pariwise distance between the rows of coord
   VectorXd u ( coord.rows() * coord.rows() );
-  Eigen::Matrix<double, 1, Eigen::Dynamic> temp ( coord.cols() );  
-  
+  Eigen::Matrix<double, 1, Eigen::Dynamic> temp ( coord.cols() );
+
   size_t count = 0;
 
   for ( size_t i = 0; i < coord.rows() ; ++i )
     for ( size_t j = 0; j < coord.rows(); ++j, ++count ) {
       temp = coord.row ( i ) - coord.row ( j );
       u ( count ) = std::sqrt ( temp * temp.adjoint() );
-    }  
-  
+    }
+
   // Compute the covariance matrix between the rows of coord
-  MatrixXd cov_0 = SurfBase::cov_->ComputeCov ( u, coord.rows(), coord.rows() );  
-  
+  MatrixXd cov_0 = SurfBase::cov_->ComputeCov ( u, coord.rows(), coord.rows() );
+
   // Compute the matrix of pariwise distance between coord and coord_
-  u.resize( SurfBase::coord_.rows() * coord.rows() );
+  u.resize ( SurfBase::coord_.rows() * coord.rows() );
   temp.resize ( SurfBase::coord_.cols() );
 
   count = 0;
@@ -304,23 +304,23 @@ fkrig::Surf::PredictCovariance ( MatrixXd& coord ) const
   MatrixXd cov_1 = SurfBase::cov_->ComputeCov ( u, coord.rows(), SurfBase::coord_.rows() );
 
   // Compute the coefficients of the curves of the term F_0 a
-  MatrixXd F_0 = SurfBase::MakeModelMatrix ( coord ) ;  
-  
+  MatrixXd F_0 = SurfBase::MakeModelMatrix ( coord ) ;
+
   // Compute cholesky decomposition of sigma_
   Eigen::LLT<MatrixXd> llt_s, llt_f;
   llt_s.compute ( SurfBase::sigma_ );
- 
+
   // Compute inv( simga_ ) F
   MatrixXd sf = llt_s.solve ( SurfBase::F_ );
-  
+
   // Compute cholesky decomposition of F' sigma_ F
   llt_f.compute ( SurfBase::F_.transpose () * sf );
-  
+
   // Compute F_0 - cov_1' inv( sigma_ ) F_
   MatrixXd temp_1 = F_0 - cov_1 * sf;
-  
+
   MatrixXd cov = cov_0 - cov_1 * llt_s.solve ( cov_1.transpose () ); // + temp_1 * llt_f.solve ( temp_1.transpose () );
-  
+
   return cov;
 }
 
@@ -433,6 +433,9 @@ fkrig::Surf::ComputeSqPairwiseDistances ()
 //   vector<double> knots_u = basis_u.getKnots(), knots_v = basis_v.getKnots();
 //   vector<double>::const_iterator it_u_begin = knots_u.begin (), it_v_begin = knots_v.begin();
   Go::SplineSurface* surf ( new Go::SplineSurface );
+  std::pair<Go::SplineSurface*, vector<Point> >* util_surf ( new std::pair<Go::SplineSurface*, vector<Point> > );
+  ( *util_surf ).second = SurfBase::polygon_;
+  
   int it = 0;
 
   double value = 0., err = 0.;
@@ -449,13 +452,19 @@ fkrig::Surf::ComputeSqPairwiseDistances ()
       *surf = Go::SplineSurface ( basis_u, basis_v, diff_i_j.begin(), SurfBase::dim_ );
 
       // Fill the vector of the differeces between the observed spline and the mean terms
-      //TODO 2d integration in a polygon
-      hcubature ( 1, fkrig::square_surface_point, surf, 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      if ( SurfBase::polygon_.empty () ) {
+        hcubature ( 1, fkrig::SquareSurfacePoint, surf, 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      } else {
+        ( *util_surf ).first = surf;
+        hcubature ( 1, fkrig::SquareSurfacePointPoly, util_surf, 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+        delete util_surf;
+      }
 
       SurfBase::par_sq_dist_[it] = value;
     }
 
   delete surf;
+  delete util_surf;
 }
 
 } // end of namespace

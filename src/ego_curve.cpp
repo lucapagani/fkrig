@@ -31,7 +31,7 @@ fkrig::EgoCurve::ComputeL1 ( Go::SplineCurve& curve ) const
   shared_ptr<Go::SplineCurve> diff = Go::GeometryTools::curveSum ( curve, 1, *nominal_curve_, -1 );
 
   // Compute
-  double value = fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, *diff, range_points_.first, range_points_.second, 1e-6, 10 );
+  double value = fkrig::AdaptiveSimpsons ( fkrig::AbsCurvePoint, *diff, range_points_.first, range_points_.second, 1e-6, 10 );
 
   return value;
 }
@@ -59,9 +59,9 @@ fkrig::EgoCurve::ComputeL1Mean ( Go::SplineCurve& curve,
   double value = 0.;
   // Compute
   if ( sd < 1e-12 ) {
-    value = fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, *diff, range_points_.first, range_points_.second, 1e-6, 10 );
+    value = fkrig::AdaptiveSimpsons ( fkrig::AbsCurvePoint, *diff, range_points_.first, range_points_.second, 1e-6, 10 );
   } else {
-    value = fkrig::adaptiveSimpsons ( fkrig::e_abs_curve_point, *diff, sd, range_points_.first, range_points_.second, 1e-6, 10 );
+    value = fkrig::AdaptiveSimpsons ( fkrig::EAbsCurvePoint, *diff, sd, range_points_.first, range_points_.second, 1e-6, 10 );
   }
 
   return value;
@@ -114,13 +114,13 @@ fkrig::EgoCurve::ComputeMean ( RVectorXd coord ) const
 
     if ( ( sigma_folded ( 0,0 ) < 1e-12 && sigma_folded ( 1,1 ) < 1e-12 ) || sigma_folded.determinant () < 1e-6 ) {
 
-      value = fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, * ( curves_ptr[0] ), range_points_.first, range_points_.second, 1e-6, 10 );
-      value -= fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, * ( curves_ptr[1] ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value = fkrig::AdaptiveSimpsons ( fkrig::AbsCurvePoint, * ( curves_ptr[0] ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value -= fkrig::AdaptiveSimpsons ( fkrig::AbsCurvePoint, * ( curves_ptr[1] ), range_points_.first, range_points_.second, 1e-6, 10 );
 
     } else if ( sigma_folded ( 0,0 ) < 1e-12 ) {
 
-      value = fkrig::adaptiveSimpsons ( fkrig::abs_curve_point, * ( curves_ptr[0] ), range_points_.first, range_points_.second, 1e-6, 10 );
-      value -= fkrig::adaptiveSimpsons ( fkrig::e_abs_curve_point, * ( curves_ptr[1] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value = fkrig::AdaptiveSimpsons ( fkrig::AbsCurvePoint, * ( curves_ptr[0] ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value -= fkrig::AdaptiveSimpsons ( fkrig::EAbsCurvePoint, * ( curves_ptr[1] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
 
     } else {
 
@@ -140,7 +140,7 @@ fkrig::EgoCurve::ComputeMean ( RVectorXd coord ) const
       llt.compute ( sigma_folded );
       llt_sigma_folded[1] = llt.matrixL();
 
-      value = fkrig::adaptiveSimpsons ( &fkrig::MeanEiCurve, curves_ptr, llt_sigma_folded, range_points_.first, range_points_.second, 1e-6, 10 );
+      value = fkrig::AdaptiveSimpsons ( &fkrig::MeanEiCurve, curves_ptr, llt_sigma_folded, range_points_.first, range_points_.second, 1e-6, 10 );
 
     }
 
@@ -214,13 +214,13 @@ fkrig::EgoCurve::ComputeVariance ( RVectorXd coord ) const
       llt.compute ( sigma_folded );
       llt_sigma_folded[1] = llt.matrixL();
 
-      value = fkrig::adaptiveSimpsons ( &fkrig::VarianceEiCurve, curves_ptr, llt_sigma_folded, range_points_.first, range_points_.second, 1e-6, 10 );
+      value = fkrig::AdaptiveSimpsons ( &fkrig::VarianceEiCurve, curves_ptr, llt_sigma_folded, range_points_.first, range_points_.second, 1e-6, 10 );
 
 //     } else if ( sigma_folded ( 1,1 ) >= 1e-12 && sigma_folded.determinant () >= 1e-6 ) {
     } else if ( sigma_folded ( 0,0 ) >= 1e-12 || sigma_folded ( 1,1 ) >= 1e-12 ){
 
-      value = fkrig::adaptiveSimpsons ( &fkrig::VarAbsCurvePoint, * ( curves_ptr[0] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
-      value += fkrig::adaptiveSimpsons ( &fkrig::VarAbsCurvePoint, * ( curves_ptr[1] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value = fkrig::AdaptiveSimpsons ( &fkrig::VarAbsCurvePoint, * ( curves_ptr[0] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
+      value += fkrig::AdaptiveSimpsons ( &fkrig::VarAbsCurvePoint, * ( curves_ptr[1] ), sigma_folded ( 1,1 ), range_points_.first, range_points_.second, 1e-6, 10 );
 
     }
 
@@ -244,6 +244,28 @@ fkrig::EgoCurve::ComputeMin ()
   // Obtain the matrix of coordinates
   MatrixXd coord = f_curve_->get_coord();
 
+  // Check if it is a link model
+  bool stop = false;
+  shared_ptr<CurveBase> temp_ptr;
+//   temp_ptr = f_curve_;
+  MatrixXd temp_coord;
+  temp_ptr = f_curve_->get_f_curve ();
+  
+  while ( stop == false ) {
+    if ( ( temp_ptr != NULL ) == true ) {
+      // Obtain the coordinates of the nested object
+      temp_coord = temp_ptr->get_coord ();
+      // Resize matrix
+      coord.conservativeResize ( coord.rows () + temp_coord.rows (), Eigen::NoChange );
+      // Bind columns
+      coord.block ( coord.rows () - temp_coord.rows (), 0, temp_coord.rows (), 2 ) = temp_coord;
+      // Obtain the nested object
+      temp_ptr = temp_ptr->get_f_curve ();     
+    } else {
+      stop = true;
+    }
+  }
+  
   // Predict the curves in the design locations
   vector<Go::SplineCurve> curves = f_curve_->Predict ( coord );
 

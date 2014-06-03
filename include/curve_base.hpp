@@ -215,6 +215,12 @@ public:
     return this->par_sq_dist_; 
   };  
   
+  //! Return the functional curve object
+  shared_ptr<CurveBase>
+  get_f_curve () const {
+    return f_curve_;
+  };  
+  
 protected:
 
   //! Compute the model matrix
@@ -294,7 +300,9 @@ protected:
   int n_iter_;
   //! true if the algorithm has converged
   bool conv_; 
-
+  //! For check if it is a link model
+  shared_ptr<CurveBase> f_curve_;
+  
 };
 
 } //! end of namespace

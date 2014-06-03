@@ -116,6 +116,13 @@ public:
   void
   ComputeMinDist ();
 
+  /*! Set the polygonal boundary
+   * 
+   *  @param polygon vertex of poligons if the region is not a square, the point are in anticlockwise order
+   */
+  void 
+  set_polygon ( vector<Point> polygon );  
+  
   //! Return fkrig object
   std::shared_ptr<SurfBase>
   get_fkrig () const {
@@ -149,9 +156,10 @@ private:
   std::pair<double, double> range_points_v_;
   //! Curve with the mimum expected L1 distance
   Go::SplineSurface surf_min_;
+  //! Vertex of poligons if the region is not a square, the point are in anticlockwise order
+  vector<Point> polygon_;
 //   //! Index of the minimum
 //   size_t index_min_;
-
 };
 
 } // End of namespace

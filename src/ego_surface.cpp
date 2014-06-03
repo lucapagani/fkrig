@@ -13,7 +13,7 @@ fkrig::EgoSurf::EgoSurf ( std::shared_ptr<fkrig::SurfBase>& f_surf,
                           double tol_loc,
                           double max_iter_glob,
                           double max_iter_loc )
-  : EgoBase ( lb, ub, glob_alg, loc_alg, tol_glob, tol_loc, max_iter_glob, max_iter_loc ), f_surf_ ( f_surf ), nominal_surf_ ( nominal_surf )
+  : EgoBase ( lb, ub, glob_alg, loc_alg, tol_glob, tol_loc, max_iter_glob, max_iter_loc ), f_surf_ ( f_surf ), nominal_surf_ ( nominal_surf ), polygon_ ( f_surf->get_polygon () )
 {
   // Compute range
   ComputeUniqueRange ();
@@ -34,7 +34,13 @@ fkrig::EgoSurf::ComputeL1 ( Go::SplineSurface& surf ) const
   double value ( 0. ), err ( 0. );
   double range_min[2] = { EgoSurf::range_points_u_.first, EgoSurf::range_points_v_.first };
   double range_max[2] = { EgoSurf::range_points_u_.second, EgoSurf::range_points_v_.second };
-  hcubature ( 1, fkrig::AbsSurfPoint, diff.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+  if ( polygon_.empty () == true ) {
+    hcubature ( 1, fkrig::AbsSurfPoint, diff.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+  } else {
+    std::pair< shared_ptr<Go::SplineSurface>, vector<Point> >* util_surf ( new std::pair< shared_ptr<Go::SplineSurface>, vector<Point> > ( diff, polygon_ ) );
+    hcubature ( 1, fkrig::AbsSurfPointPoly, util_surf, 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+    delete util_surf;
+  }
 
   return value;
 }
@@ -64,11 +70,21 @@ fkrig::EgoSurf::ComputeL1Mean ( Go::SplineSurface& surf,
   double range_min[2] = { EgoSurf::range_points_u_.first, EgoSurf::range_points_v_.first };
   double range_max[2] = { EgoSurf::range_points_u_.second, EgoSurf::range_points_v_.second };
   if ( sd < 1e-12 ) {
-    hcubature ( 1, fkrig::AbsSurfPoint, diff.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+    if ( polygon_.empty () == true ) {
+      hcubature ( 1, fkrig::AbsSurfPoint, diff.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+    } else {
+      std::pair< shared_ptr<Go::SplineSurface>, vector<Point> >* util_surf ( new std::pair< shared_ptr<Go::SplineSurface>, vector<Point> > ( diff, polygon_ ) );
+      hcubature ( 1, fkrig::AbsSurfPointPoly, util_surf, 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      delete util_surf;
+    }
   } else {
-//     shared_ptr< std::pair< shared_ptr<Go::SplineSurface>, double > > util ( new std::make_pair< shared_ptr<Go::SplineSurface>, double > ( diff, sd ) );
-    shared_ptr< std::pair< shared_ptr<Go::SplineSurface>, double > > util ( new std::pair< shared_ptr<Go::SplineSurface>, double > ( diff, sd ) );
-    hcubature ( 1, fkrig::EAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+    if ( polygon_.empty () == true ) {
+      shared_ptr< std::pair< shared_ptr<Go::SplineSurface>, double > > util ( new std::pair< shared_ptr<Go::SplineSurface>, double > ( diff, sd ) );
+      hcubature ( 1, fkrig::EAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+    } else {
+      shared_ptr< std::tuple< shared_ptr<Go::SplineSurface>, double, vector<Point> > > util ( new std::tuple< shared_ptr<Go::SplineSurface>, double, vector<Point> > ( diff, sd, polygon_ ) );
+      hcubature ( 1, fkrig::EAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+    }
   }
 
   return value;
@@ -126,17 +142,35 @@ fkrig::EgoSurf::ComputeMean ( RVectorXd coord ) const
 
     if ( ( sigma_folded ( 0,0 ) < 1e-12 && sigma_folded ( 1,1 ) < 1e-12 ) || sigma_folded.determinant () < 1e-6 ) {
 
-      hcubature ( 1, fkrig::AbsSurfPoint, ( surf_ptr[0] ).get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
-      hcubature ( 1, fkrig::AbsSurfPoint, ( surf_ptr[1] ).get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value_temp, &err );
+      if ( polygon_.empty () == true ) {
+        hcubature ( 1, fkrig::AbsSurfPoint, ( surf_ptr[0] ).get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+        hcubature ( 1, fkrig::AbsSurfPoint, ( surf_ptr[1] ).get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value_temp, &err );
+      } else {
+        shared_ptr< std::pair< shared_ptr<Go::SplineSurface>, vector<Point> > > util_surf ( new std::pair< shared_ptr<Go::SplineSurface>, vector<Point> > ( surf_ptr[0], polygon_ ) );
+        hcubature ( 1, fkrig::AbsSurfPointPoly, util_surf.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+
+        util_surf.reset ( new std::pair< shared_ptr<Go::SplineSurface>, vector<Point> > ( surf_ptr[1], polygon_ ) );
+        hcubature ( 1, fkrig::AbsSurfPointPoly, util_surf.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      }
+
       value -= value_temp;
 
     } else if ( sigma_folded ( 0,0 ) < 1e-12 ) {
 
-      hcubature ( 1, fkrig::AbsSurfPoint, ( surf_ptr[0] ).get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      if ( polygon_.empty () == true ) {
+        hcubature ( 1, fkrig::AbsSurfPoint, ( surf_ptr[0] ).get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
 
-      shared_ptr< std::pair< shared_ptr< Go::SplineSurface >, double > > util ( new std::pair< shared_ptr< Go::SplineSurface >, double > ( surf_ptr[1], sigma_folded ( 1, 1 ) ) );
+        shared_ptr< std::pair< shared_ptr< Go::SplineSurface >, double > > util ( new std::pair< shared_ptr< Go::SplineSurface >, double > ( surf_ptr[1], sigma_folded ( 1, 1 ) ) );
 
-      hcubature ( 1, fkrig::EAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value_temp, &err );
+        hcubature ( 1, fkrig::EAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value_temp, &err );
+      } else {
+        shared_ptr< std::pair< shared_ptr<Go::SplineSurface>, vector<Point> > > util_surf_0 ( new std::pair< shared_ptr<Go::SplineSurface>, vector<Point> > ( surf_ptr[0], polygon_ ) );
+        hcubature ( 1, fkrig::AbsSurfPointPoly, util_surf_0.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+
+        shared_ptr< std::tuple< shared_ptr<Go::SplineSurface>, double, vector<Point> > > util_surf_1 ( new std::tuple< shared_ptr<Go::SplineSurface>, double,  vector<Point> > ( surf_ptr[1], sigma_folded ( 1, 1 ), polygon_ ) );
+        hcubature ( 1, fkrig::EAbsSurfPointPoly, util_surf_1.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      }
+
       value -= value_temp;
 
     } else {
@@ -157,9 +191,15 @@ fkrig::EgoSurf::ComputeMean ( RVectorXd coord ) const
       llt.compute ( sigma_folded );
       llt_sigma_folded[1] = llt.matrixL();
 
-      shared_ptr< std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> > > util ( new std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> > ( surf_ptr, llt_sigma_folded ) );
+      if ( polygon_.empty () == true ) {
+        shared_ptr< std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> > > util ( new std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> > ( surf_ptr, llt_sigma_folded ) );
 
-      hcubature ( 1, fkrig::MeanEiSurf, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+        hcubature ( 1, fkrig::MeanEiSurf, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      } else {
+        shared_ptr< std::tuple< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd>, vector<Point> > > util ( new std::tuple< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd>, vector<Point> > ( surf_ptr, llt_sigma_folded, polygon_ ) );
+
+        hcubature ( 1, fkrig::MeanEiSurfPoly, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      }
     }
 
   }
@@ -235,27 +275,40 @@ fkrig::EgoSurf::ComputeVariance ( RVectorXd coord ) const
       llt.compute ( sigma_folded );
       llt_sigma_folded[1] = llt.matrixL();
 
-      shared_ptr< std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> > > util ( new std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> > ( surf_ptr, llt_sigma_folded ) );
+      if ( polygon_.empty () == true ) {
+        shared_ptr< std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> > > util ( new std::pair< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd> > ( surf_ptr, llt_sigma_folded ) );
 
-      hcubature ( 1, fkrig::VarianceEiSurf, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+        hcubature ( 1, fkrig::VarianceEiSurf, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      } else {
+         shared_ptr< std::tuple< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd>, vector<Point> > > util ( new std::tuple< vector< shared_ptr< Go::SplineSurface > >, vector<MatrixXd>, vector<Point> > ( surf_ptr, llt_sigma_folded, polygon_ ) );
 
+        hcubature ( 1, fkrig::VarianceEiSurfPoly, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );       
+      }
+      
 //     } else if ( sigma_folded ( 1,1 ) >= 1e-12 && sigma_folded.determinant () >= 1e-6 ) {
     } else if ( sigma_folded ( 0,0 ) >= 1e-12 || sigma_folded ( 1,1 ) >= 1e-12 ) {
 
       double value_temp ( 0. );
 
-      shared_ptr< std::pair< shared_ptr< Go::SplineSurface >, double > > util ( new std::pair< shared_ptr< Go::SplineSurface >, double > ( surf_ptr[0], sigma_folded ( 0, 0 ) ) );
-
-      hcubature ( 1, fkrig::VarAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
-
-      util.reset ( new std::pair< shared_ptr< Go::SplineSurface >, double > ( surf_ptr[1], sigma_folded ( 1, 1 ) ) );
-
-      hcubature ( 1, fkrig::VarAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value_temp, &err );
-
+      if ( polygon_.empty () == true ) {
+        shared_ptr< std::pair< shared_ptr< Go::SplineSurface >, double > > util ( new std::pair< shared_ptr< Go::SplineSurface >, double > ( surf_ptr[0], sigma_folded ( 0, 0 ) ) );
+        
+        hcubature ( 1, fkrig::VarAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+        
+        util.reset ( new std::pair< shared_ptr< Go::SplineSurface >, double > ( surf_ptr[1], sigma_folded ( 1, 1 ) ) );
+        
+        hcubature ( 1, fkrig::VarAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value_temp, &err );
+      } else {
+        shared_ptr< std::tuple< shared_ptr< Go::SplineSurface >, double, vector<Point> > > util ( new std::tuple< shared_ptr< Go::SplineSurface >, double, vector<Point> > ( surf_ptr[0], sigma_folded ( 0, 0 ), polygon_ ) );
+        
+        hcubature ( 1, fkrig::VarAbsSurfPointPoly, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+        
+        util.reset ( new std::tuple< shared_ptr< Go::SplineSurface>, double, vector<Point> > ( surf_ptr[1], sigma_folded ( 1, 1 ), polygon_ ) );
+        
+        hcubature ( 1, fkrig::VarAbsSurfPointPoly, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value_temp, &err );        
+      }
       value += value_temp;
-
     }
-
   }
 
   return value;
@@ -276,6 +329,27 @@ fkrig::EgoSurf::ComputeMin ()
   // Obtain the matrix of coordinates
   MatrixXd coord = f_surf_->get_coord();
 
+  // Check if it is a link model
+  bool stop = false;
+  shared_ptr<SurfBase> temp_ptr;
+  MatrixXd temp_coord;
+  temp_ptr = f_surf_->get_f_surf ();
+  
+  while ( stop == false ) {
+    if ( ( temp_ptr != NULL ) == true ) {
+      // Obtain the coordinates of the nested object
+      temp_coord = temp_ptr->get_coord ();
+      // Resize matrix
+      coord.conservativeResize ( coord.rows () + temp_coord.rows (), Eigen::NoChange );
+      // Bind columns
+      coord.block ( coord.rows () - temp_coord.rows (), 0, temp_coord.rows (), 2 ) = temp_coord;
+      // Obtain the nested object
+      temp_ptr = temp_ptr->get_f_surf ();     
+    } else {
+      stop = true;
+    }
+  }  
+  
   // Predict the curves in the design locations
   vector<Go::SplineSurface> surfaces = f_surf_->Predict ( coord );
 
@@ -316,7 +390,7 @@ fkrig::EgoSurf::ComputeUniqueRange ()
 void
 fkrig::EgoSurf::ComputeMinDist ()
 {
-  
+
   // Create a global optimization object
   nlopt::opt opt_glob ( EgoBase::glob_alg_, EgoBase::lb_.size() );
   // Create a local optimization object
@@ -331,8 +405,8 @@ fkrig::EgoSurf::ComputeMinDist ()
   opt_loc.set_upper_bounds ( EgoBase::ub_ );
 
   // Set the objective function
-  opt_glob.set_min_objective ( f, this );  
-  
+  opt_glob.set_min_objective ( f, this );
+
   // Set the relative x tollerance
   opt_glob.set_xtol_rel ( EgoBase::x_tol_glob_ );
   opt_loc.set_xtol_rel ( EgoBase::x_tol_loc_ );
@@ -351,8 +425,17 @@ fkrig::EgoSurf::ComputeMinDist ()
   // Preform the optimization
   EgoBase::result_min_ = opt_glob.optimize ( x0, EgoBase::value_min_ );
 
-  EgoBase::x_min_ = x0;  
-  
+  EgoBase::x_min_ = x0;
+
 }
+
+//! Set the polygonal boundary
+void
+fkrig::EgoSurf::set_polygon ( vector<Point> polygon )
+{
+
+  polygon_ = polygon;
+
+};
 
 } // End of namespace

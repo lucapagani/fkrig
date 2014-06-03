@@ -130,7 +130,14 @@ public:
   */
   void
   set_covaraince ( std::unique_ptr<fkrig::Covariance> cov );
-
+  
+  /*! Set the polygonal boundary
+   * 
+   *  @param polygon vertex of poligons if the region is not a square, the point are in anticlockwise order
+   */
+  void 
+  set_polygon ( vector<Point> polygon );
+  
   /*! Predict the value at the design coordinates coord in the geometric value param
    *  @param coord matrix of coordinates of the new design locations
    *  @param param_u vector of parameter values in the u direction for each new design location
@@ -229,14 +236,7 @@ public:
 
   //! Return the area of the parametric space 
   double
-  get_domain_range () const {
-    
-    double value = 0.;
-    
-    value = ( range_points_u_.second - range_points_u_.first ) * ( range_points_v_.second - range_points_v_.first );
-    
-    return value;
-  };    
+  get_domain_range () const;    
  
   //! Return the distance between the points in the design space
   VectorXd
@@ -261,6 +261,18 @@ public:
   get_range_v () const {
     return this->range_points_v_;
   };  
+  
+  //! Return the polygonal boundary
+  std::vector<Point>
+  get_polygon () const {
+    return this->polygon_;
+  };
+  
+  //! Return the functional curve object
+  shared_ptr<SurfBase>
+  get_f_surf () const {
+    return f_surf_;
+  };    
   
 protected:
 
@@ -326,15 +338,6 @@ protected:
                int n0 = 1,
                int smoothing_iterations = 0 );
 
-  /*! Check if a point is on the polygon (the point is inside the polygon if it is on the border)
-   *
-   *  @param u value of the u parameter
-   *  @param v value of the v parameter
-   */
-  bool
-  Pnpoly ( double u,
-           double v );
-
   //! Points in the geometric space
   vector< vector<double> > points_;
   //! Parameterization in the geometric space in u direction
@@ -375,7 +378,9 @@ protected:
   bool conv_;
   //! Vertex of poligons if the region is not a square, the point are in anticlockwise order
   vector< Point > polygon_;
-
+  //! For check if it is a link model
+  shared_ptr<SurfBase> f_surf_;
+  
 };
 
 } //! end of namespace
