@@ -83,7 +83,7 @@ fkrig::EgoSurf::ComputeL1Mean ( Go::SplineSurface& surf,
       hcubature ( 1, fkrig::EAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
     } else {
       shared_ptr< std::tuple< shared_ptr<Go::SplineSurface>, double, vector<Point> > > util ( new std::tuple< shared_ptr<Go::SplineSurface>, double, vector<Point> > ( diff, sd, polygon_ ) );
-      hcubature ( 1, fkrig::EAbsSurfPoint, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
+      hcubature ( 1, fkrig::EAbsSurfPointPoly, util.get (), 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
     }
   }
 

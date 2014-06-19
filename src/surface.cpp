@@ -457,7 +457,7 @@ fkrig::Surf::ComputeSqPairwiseDistances ()
       } else {
         ( *util_surf ).first = surf;
         hcubature ( 1, fkrig::SquareSurfacePointPoly, util_surf, 2, range_min, range_max, 0, 0, 1e-4, ERROR_INDIVIDUAL, &value, &err );
-        delete util_surf;
+//         delete util_surf;
       }
 
       SurfBase::par_sq_dist_[it] = value;

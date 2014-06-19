@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 2.8)
 
 project(fkrig)
 
+set ( CMAKE_BUILD_TYPE, "Release" )
+
 # add_definitions("-std=c++11 -Wall -Wunused-private-field -g -O0")
-add_definitions("-std=c++11 -Wall -g -Wno-sign-compare -O0")
+add_definitions("-std=c++11 -Wall -Wno-sign-compare")
 
 find_package(Ceres REQUIRED)
 include_directories(${CERES_INCLUDE_DIRS})
